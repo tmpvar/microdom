@@ -1,0 +1,21 @@
+{
+  "name": "microdom",
+  "version": "0.0.0",
+  "description": "",
+  "main": "microdom.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tmpvar/microdom.git"
+  },
+  "author": "Elijah Insua <tmpvar@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tmpvar/microdom/issues"
+  },
+  "devDependencies": {
+    "mocha": "1.x"
+  },
+  "scripts": {
+    "test": "node_modules/mocha/bin/mocha test/test.js -R spec"
+  }
+}
