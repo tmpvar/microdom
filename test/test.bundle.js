@@ -215,7 +215,7 @@ function MicroDom() {
 
 MicroDom.prototype = new MicroNode();
 
-module.exports = function(xml, fn) {
+function microdom(xml, fn) {
   var dom = new MicroDom();
 
   if (xml) {
@@ -230,11 +230,11 @@ module.exports = function(xml, fn) {
   return dom;
 };
 
-module.exports.tag = function(name, ctor) {
+microdom.tag = function(name, ctor) {
   tags[name] = ctor;
 };
 
-module.exports.plugin = function(o) {
+microdom.plugin = function(o) {
   var proto = MicroNode.prototype;
   if (typeof o === 'function') {
     o(proto);
@@ -245,9 +245,16 @@ module.exports.plugin = function(o) {
   }
 };
 
-module.exports.parse = parse;
-module.exports.MicroNode = MicroNode;
-module.exports.MicroDom = MicroDom;
+microdom.parse = parse;
+microdom.MicroNode = MicroNode;
+microdom.MicroDom = MicroDom;
+microdom.sax = sax;
+
+if (typeof module !== 'undefined' && typeof module.exports == 'object') {
+  module.exports = microdom;
+} else {
+  window.microdom = window.microdom || microdom;
+}
 
 },{"sax":2}],2:[function(require,module,exports){
 var Buffer=require("__browserify_Buffer");// wrapper for non-node envs
