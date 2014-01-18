@@ -69,6 +69,26 @@ Put another way, if you need the `href` of an anchor to resolve based on the `<b
 
 to create a new dom use the `microdom([xml])` method which may be passed an optional xml string.
 
+If you have an instance of a sax parser, you can pass that instead and `microdom` will rig up the events for you and return you the dom immediately.  It will probably take a bit before the entire dom is populated so you'll want to wait 
+for the parser stream to finish before operating on the dom!
+
+Here's what that looks like:
+
+```javscript
+
+var sax = require('sax');
+var microdom = require('microdom');
+var parser = sax.parser(true);
+
+var dom = microdom(parser, function() {
+  console.log(this.child(0).attr('class')) // 'testing'
+});
+
+parser.end('<a class="testing">blah</a>')
+
+```
+
+
 ### append
 
 create a new node and append it to `node`

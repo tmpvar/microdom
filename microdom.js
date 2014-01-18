@@ -15,7 +15,12 @@ var isArray = function(v) {
 }
 
 function parse(string, root) {
-  var parser = sax.parser(true);
+  var parser;
+  if (!isString(string)) {
+    parser = string;
+  } else {
+    parser = sax.parser(true);
+  }
 
   var loc;
   root = root || new MicroNode();
@@ -41,7 +46,8 @@ function parse(string, root) {
     loc = loc.parent;
   }
 
-  parser.write(string);
+  // Internal control of the parser
+  isString(string) && parser.write(string).end();
 
   return (root.length() > 1) ? root._children : root.child(0);
 
@@ -196,9 +202,18 @@ function MicroDom() {
 
 MicroDom.prototype = new MicroNode();
 
-module.exports = function(xml) {
+module.exports = function(xml, fn) {
   var dom = new MicroDom();
-  xml && parse(xml, dom);
+
+  if (xml) {
+    parse(xml, dom);
+    if (!isString(xml) && typeof fn == 'function') {
+      xml.onend = function() {
+        fn.call(dom);
+      };
+    }
+  }
+
   return dom;
 };
 
