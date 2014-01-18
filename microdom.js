@@ -1,5 +1,6 @@
 var sax = require('sax');
-
+var inherits = require('util').inherits;
+var EventEmitter = require('events').EventEmitter;
 var tags = {};
 
 var isNumber = function(v) {
@@ -66,9 +67,12 @@ function parse(string, root) {
 }
 
 function MicroNode(attrs) {
+  EventEmitter.call(this);
   this.attributes = attrs || {};
   this._children = [];
 }
+
+inherits(MicroNode, EventEmitter);
 
 MicroNode.prototype.isNode = true;
 
@@ -120,27 +124,27 @@ MicroNode.prototype.buildNode = function(name, obj, textContent) {
 
   obj.own(this.owner || this);
 
-  return obj;
+  return (isArray(obj)) ? obj : [obj];
 };
 
 MicroNode.prototype.prepend = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
-  if (isArray(obj)) {
-    Array.prototype.unshift.apply(this.children(), obj);
-  } else {
-    this.children().unshift(obj);
+  var children = this.children();
+  for (var i=0; i<obj.length; i++) {
+    children.unshift(obj[i]);
+    this.emit('+node', obj[i]);
   }
-  return obj;
+  return (obj.length === 1) ? obj[0] : obj;
 };
 
 MicroNode.prototype.append = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
-  if (isArray(obj)) {
-    Array.prototype.push.apply(this.children(), obj);
-  } else {
-    this.children().push(obj);
+  var children = this.children();
+  for (var i=0; i<obj.length; i++) {
+    children.push(obj[i]);
+    this.emit('+node', obj[i]);
   }
-  return obj;
+  return (obj.length === 1) ? obj[0] : obj;
 };
 
 MicroNode.prototype.indexOf = function(node) {
@@ -193,13 +197,17 @@ MicroNode.prototype.remove = function(node) {
 
   node.parent = null;
 
+  node.owner.emit('-node', node);
+
   return node;
 };
 
 // Attribute getter/setter
 MicroNode.prototype.attr = function(name, value) {
   if (typeof value !== 'undefined') {
+    var old = this.attributes[name] || null;
     this.attributes[name] = value;
+    this.owner.emit('~attr.' + name, this, value, old);
   }
 
   return this.attributes[name] || null;
@@ -209,7 +217,7 @@ function MicroDom() {
   MicroNode.call(this);
 }
 
-MicroDom.prototype = new MicroNode();
+inherits(MicroDom, MicroNode);
 
 function microdom(xml, fn) {
   var dom = new MicroDom();

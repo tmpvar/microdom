@@ -217,6 +217,40 @@ Here's an example that will add a `node.getElementsByTagName` function much like
   });
 ```
 
+### Keep up with mutation events
+
+Instead of baking all sorts of caching behavior into `microdom`, there is a mutation event interface that
+notifies listeners whenever common things happen.
+
+ * add node
+ * remove node
+ * add attribute
+ * update attribute
+
+Here's how you would listen for updates to any `class` attribute in the dom:
+
+```javascript
+
+var dom = microdom();
+var node = dom.append('a');
+
+dom.on('~attr.class', function(node, attributeValue) {
+  console.log(node.name + "'s class is now", attributeValue);
+});
+
+node.attr('class', 'biglink'); // outputs "a's class is now biglink"
+
+``` 
+
+Mutation events are prefixed to separate them from other types of events
+
+ * `~` - change
+ * `+` - addition
+ * `-` - removal
+
+for more info see the `mutation events` section in `test/test.js`
+
+
 ## Finding plugins
 
 Easy peasy, hit up this url (http://npmsearch.com/?q=keywords:microdom,plugin)[http://npmsearch.com/?q=keywords:microdom,plugin]

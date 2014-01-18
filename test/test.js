@@ -44,7 +44,7 @@ describe('microdom', function() {
   describe('#buildNode', function() {
     it('should add .value if specified', function() {
       var dom = microdom();
-      var node = dom.buildNode('a', { href : '/test'}, 'test link');
+      var node = dom.buildNode('a', { href : '/test'}, 'test link')[0];
       assert.equal('/test', node.attr('href'));
       assert.equal('test link', node.value);
       assert.equal('a', node.name);
@@ -368,6 +368,67 @@ describe('microdom', function() {
       assert.ok(called);
       assert.equal('anchor', node.type);
     });
+  });
+
+  describe('mutation events', function() {
+    describe('#attr', function() {
+      it('should track attribute mutations', function(t) {
+        var dom = microdom();
+        var a = dom.append('a');
+
+        dom.on('~attr.class', function(node, attributeValue, oldValue) {
+          assert.deepEqual(node, a);
+          assert.equal('biglink', attributeValue);
+          t();
+        });
+
+        a.attr('class', 'biglink');
+      });
+    });
+
+    describe('#append', function() {
+      it('should track node additions', function(t) {
+        var dom = microdom();
+
+        dom.on('+node', function(node) {
+          assert.deepEqual(node, dom.child(0));
+          assert.equal('a', node.name);
+          t();
+        });
+
+        var a = dom.append('a');
+      });
+    });
+
+    describe('#prepend', function() {
+      it('should track node additions', function(t) {
+        var dom = microdom();
+
+        dom.on('+node', function(node) {
+          assert.ok(node === dom.child(0));
+          assert.equal('a', node.name);
+          t();
+        });
+
+        dom.prepend('a');
+      });
+    });
+
+    describe('#remove', function() {
+      it('should track node removal', function(t) {
+        var dom = microdom();
+
+        dom.on('-node', function(node) {
+          assert.deepEqual(node, a);
+          assert.equal('a', node.name);
+          t();
+        });
+
+        var a = dom.append('a');
+        dom.remove(a);
+      });
+    });
+
   });
 
   describe('#plugin', function() {
