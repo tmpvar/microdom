@@ -292,6 +292,18 @@ describe('microdom', function() {
       assert.equal(123, node.attr('hello'));
       assert.equal(321, node.attr('hello2'));
     });
+
+    it('should accept an object', function() {
+      var node = microdom().append();
+
+      node.attr({
+        a: 1,
+        b: 2
+      });
+
+      assert.equal(1, node.attr('a'));
+      assert.equal(2, node.attr('b'));
+    })
   });
 
   describe('#parse', function() {

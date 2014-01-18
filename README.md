@@ -120,7 +120,7 @@ appended
 
 ### attr
 
-Get/Set attributes on a node
+#### Get/Set attributes on a node
 
 ```javascript
 node.attr('class', 'small');
@@ -130,6 +130,7 @@ console.log(node.attr('class')) // small
 This will trigger a `+attr.class` event.  Changing the class after this point generates a `~attr.class` event.
 
 
+#### Ignore attributes
 You can also remove attributes by passing `null` as the value like so:
 
 ```javascript
@@ -139,6 +140,20 @@ node.attr('class', null);
 ```
 
 This will trigger a `-attr.class` event
+
+#### Set a bunch of attributes at once
+
+
+```javascript
+var node = dom.append('a');
+node.attr({
+  id: 'test',
+  class: 'right-aligned'
+});
+
+```
+
+_note_: this will emit two events: `+attr.id` and `+attr.class` with the appropriate values.
 
 ### child
 
@@ -245,10 +260,13 @@ Here's an example that will add a `node.getElementsByTagName` function much like
 Instead of baking all sorts of caching behavior into `microdom`, there is a mutation event interface that
 notifies listeners whenever common things happen.
 
- * add node
- * remove node
- * add attribute
- * update attribute
+ * add node  - `dom.on('+node', ...)`
+ * remove node  - `dom.on('-node', ...)`
+ * add attribute  - `dom.on('+attr.<name>, ...)`
+ * change attribute - `dom.on('~attr.<name>', ...)`
+ * remove attribute - `dom.on('-attr.<name>', ...)`
+
+Please note that mutation events are _only_ emitted from the root node.  The bubble/capture event system should exist in userland.
 
 Here's how you would listen for updates to any `class` attribute in the dom:
 

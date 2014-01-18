@@ -69,7 +69,7 @@ function parse(string, root) {
 
 function MicroNode(attrs) {
   EventEmitter.call(this);
-  this.attributes = attrs || {};
+  this.attr = attrs || {};
   this._children = [];
 }
 
@@ -205,15 +205,31 @@ MicroNode.prototype.remove = function(node) {
 
 // Attribute getter/setter
 MicroNode.prototype.attr = function(name, value) {
-  if (typeof value !== 'undefined') {
-    var old = this.attributes[name] || null;
-    this.attributes[name] = value;
-    if (value === null) {
-      this.owner.emit('-attr.' + name, this, value, old);
-    } else if (old !== null) {
-      this.owner.emit('~attr.' + name, this, value, old);
+  var obj;
+
+  if (!isString(name) || (isString(name) && typeof value !== 'undefined')) {
+    if (isString(name)) {
+      obj = {};
+      obj[name] = value;
     } else {
-      this.owner.emit('+attr.' + name, this, value, old);      
+      obj = name;
+    }
+
+    for (name in obj) {
+
+      if (obj.hasOwnProperty(name)) { 
+        value = obj[name];
+
+        var old = this.attributes[name] || null;
+        this.attributes[name] = value;
+        if (value === null) {
+          this.owner.emit('-attr.' + name, this, value, old);
+        } else if (old !== null) {
+          this.owner.emit('~attr.' + name, this, value, old);
+        } else {
+          this.owner.emit('+attr.' + name, this, value, old);      
+        }        
+      }
     }
   }
 
@@ -263,7 +279,9 @@ microdom.sax = sax;
 
 if (typeof module !== 'undefined' && typeof module.exports == 'object') {
   module.exports = microdom;
-} else {
+}
+
+if (typeof window !== 'undefined') {
   window.microdom = window.microdom || microdom;
 }
 
@@ -1974,6 +1992,18 @@ describe('microdom', function() {
       assert.equal(123, node.attr('hello'));
       assert.equal(321, node.attr('hello2'));
     });
+
+    it('should accept an object', function() {
+      var node = microdom().append();
+
+      node.attr({
+        a: 1,
+        b: 2
+      });
+
+      assert.equal(1, node.attr('a'));
+      assert.equal(2, node.attr('b'));
+    })
   });
 
   describe('#parse', function() {

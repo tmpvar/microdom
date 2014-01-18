@@ -13,18 +13,21 @@
     "url": "https://github.com/tmpvar/microdom/issues"
   },
   "devDependencies": {
-    "mocha": "1.x"
+    "mocha": "1.x",
+    "istanbul": "~0.2.3"
   },
   "scripts": {
     "test": "node_modules/mocha/bin/mocha test/test.js -R spec",
-    "release" : "npm run minify",
-    "minify": "browserify -e microdom.js | uglifyjs > microdom.min.js && browserify -e test/test.js -o test/test.bundle.js"
+    "release": "npm run minify",
+    "minify": "browserify -e microdom.js | uglifyjs > microdom.min.js && browserify -e test/test.js -o test/test.bundle.js",
+    "cover": "istanbul cover _mocha -- test/test.js -R spec"
   },
   "dependencies": {
     "sax": "~0.6.0"
   },
-  "keywords" : [
-    "microdom", "dom"
+  "keywords": [
+    "microdom",
+    "dom"
   ],
   "testling": {
     "browsers": [
