@@ -17,5 +17,8 @@
   },
   "scripts": {
     "test": "node_modules/mocha/bin/mocha test/test.js -R spec"
+  },
+  "dependencies": {
+    "sax": "~0.6.0"
   }
 }
