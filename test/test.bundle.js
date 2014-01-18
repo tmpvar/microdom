@@ -1,6 +1,7 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 var sax = require('sax');
-
+var inherits = require('util').inherits;
+var EventEmitter = require('events').EventEmitter;
 var tags = {};
 
 var isNumber = function(v) {
@@ -67,9 +68,12 @@ function parse(string, root) {
 }
 
 function MicroNode(attrs) {
+  EventEmitter.call(this);
   this.attributes = attrs || {};
   this._children = [];
 }
+
+inherits(MicroNode, EventEmitter);
 
 MicroNode.prototype.isNode = true;
 
@@ -121,27 +125,27 @@ MicroNode.prototype.buildNode = function(name, obj, textContent) {
 
   obj.own(this.owner || this);
 
-  return obj;
+  return (isArray(obj)) ? obj : [obj];
 };
 
 MicroNode.prototype.prepend = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
-  if (isArray(obj)) {
-    Array.prototype.unshift.apply(this.children(), obj);
-  } else {
-    this.children().unshift(obj);
+  var children = this.children();
+  for (var i=0; i<obj.length; i++) {
+    children.unshift(obj[i]);
+    this.emit('+node', obj[i]);
   }
-  return obj;
+  return (obj.length === 1) ? obj[0] : obj;
 };
 
 MicroNode.prototype.append = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
-  if (isArray(obj)) {
-    Array.prototype.push.apply(this.children(), obj);
-  } else {
-    this.children().push(obj);
+  var children = this.children();
+  for (var i=0; i<obj.length; i++) {
+    children.push(obj[i]);
+    this.emit('+node', obj[i]);
   }
-  return obj;
+  return (obj.length === 1) ? obj[0] : obj;
 };
 
 MicroNode.prototype.indexOf = function(node) {
@@ -194,13 +198,23 @@ MicroNode.prototype.remove = function(node) {
 
   node.parent = null;
 
+  node.owner.emit('-node', node);
+
   return node;
 };
 
 // Attribute getter/setter
 MicroNode.prototype.attr = function(name, value) {
   if (typeof value !== 'undefined') {
+    var old = this.attributes[name] || null;
     this.attributes[name] = value;
+    if (value === null) {
+      this.owner.emit('-attr.' + name, this, value, old);
+    } else if (old !== null) {
+      this.owner.emit('~attr.' + name, this, value, old);
+    } else {
+      this.owner.emit('+attr.' + name, this, value, old);      
+    }
   }
 
   return this.attributes[name] || null;
@@ -210,7 +224,7 @@ function MicroDom() {
   MicroNode.call(this);
 }
 
-MicroDom.prototype = new MicroNode();
+inherits(MicroDom, MicroNode);
 
 function microdom(xml, fn) {
   var dom = new MicroDom();
@@ -253,7 +267,7 @@ if (typeof module !== 'undefined' && typeof module.exports == 'object') {
   window.microdom = window.microdom || microdom;
 }
 
-},{"sax":2}],2:[function(require,module,exports){
+},{"events":5,"sax":2,"util":21}],2:[function(require,module,exports){
 var Buffer=require("__browserify_Buffer");// wrapper for non-node envs
 ;(function (sax) {
 
@@ -1669,7 +1683,7 @@ if (!String.fromCodePoint) {
 var sax = require('sax');
 var microdom = require('../microdom.js');
 var assert = require('assert');
-
+var inherits = require('util').inherits;
 
 describe('microdom', function() {
   describe('#microdom', function() {
@@ -1712,7 +1726,7 @@ describe('microdom', function() {
   describe('#buildNode', function() {
     it('should add .value if specified', function() {
       var dom = microdom();
-      var node = dom.buildNode('a', { href : '/test'}, 'test link');
+      var node = dom.buildNode('a', { href : '/test'}, 'test link')[0];
       assert.equal('/test', node.attr('href'));
       assert.equal('test link', node.value);
       assert.equal('a', node.name);
@@ -2021,10 +2035,11 @@ describe('microdom', function() {
       var called = false;
       function Anchor() {
         this.type = "anchor";
-        microdom.MicroNode.call(this);
+        microdom.MicroNode.apply(this, arguments);
       }
 
-      Anchor.prototype = new microdom.MicroNode();
+      inherits(Anchor, microdom.MicroNode);
+
       Anchor.prototype.click = function() {
         called = true;
       };
@@ -2033,9 +2048,102 @@ describe('microdom', function() {
       var node = microdom('<a />').child(0);
       node.click();
  
+      // cleanup after ourselves
+      microdom.tag('a', null);
+
       assert.ok(called);
       assert.equal('anchor', node.type);
     });
+  });
+
+  describe('mutation events', function() {
+    describe('#attr', function() {
+      it('should track attribute mutations', function(t) {
+        var dom = microdom();
+        var a = dom.append('a');
+
+        dom.on('~attr.class', function(node, attributeValue, oldValue) {
+          assert.deepEqual(node, a);
+          assert.equal('biglink', oldValue);
+          assert.equal('small', attributeValue);
+          t();
+        });
+
+        a.attr('class', 'biglink');
+        a.attr('class', 'small');
+      });
+
+      it('should track attribute additions', function(t) {
+        var dom = microdom();
+        var a = dom.append('el');
+
+        dom.on('+attr.class', function(node, attributeValue, oldValue) {
+          assert.deepEqual(node, a);
+          assert.equal('biglink', attributeValue);
+          t();
+        });
+
+        a.attr('class', 'biglink');
+      });
+
+      it('should track attribute removals', function(t) {
+        var dom = microdom();
+        var a = dom.append('el', { 'class' : 'biglink' });
+
+        dom.on('-attr.class', function(node, attributeValue, oldValue) {
+          assert.deepEqual(node, a);
+          assert.equal('biglink', oldValue);
+          assert.equal(null, attributeValue);
+          t();
+        });
+
+        a.attr('class', null);
+      });
+    });
+
+    describe('#append', function() {
+      it('should track node additions', function(t) {
+        var dom = microdom();
+
+        dom.on('+node', function(node) {
+          assert.deepEqual(node, dom.child(0));
+          assert.equal('a', node.name);
+          t();
+        });
+
+        var a = dom.append('a');
+      });
+    });
+
+    describe('#prepend', function() {
+      it('should track node additions', function(t) {
+        var dom = microdom();
+
+        dom.on('+node', function(node) {
+          assert.ok(node === dom.child(0));
+          assert.equal('a', node.name);
+          t();
+        });
+
+        dom.prepend('a');
+      });
+    });
+
+    describe('#remove', function() {
+      it('should track node removal', function(t) {
+        var dom = microdom();
+
+        dom.on('-node', function(node) {
+          assert.deepEqual(node, a);
+          assert.equal('a', node.name);
+          t();
+        });
+
+        var a = dom.append('a');
+        dom.remove(a);
+      });
+    });
+
   });
 
   describe('#plugin', function() {
@@ -2063,7 +2171,10 @@ describe('microdom', function() {
 
     it('should work in the case of getElemntsByTagName', function() {
 
-      var dom = microdom('<outer><child><grandchild><leaf class="a"/><leaf class="b"/></grandchild></child></outer>');
+      var dom = microdom([
+        '<outer><child><grandchild><leaf class="a"/>',
+        '<leaf class="b"/></grandchild></child></outer>'].join('')
+      );
 
       microdom.plugin({
         getElementsByTagName : function(name) {
@@ -2090,7 +2201,7 @@ describe('microdom', function() {
   });
 });
 
-},{"../microdom.js":1,"assert":4,"sax":2}],4:[function(require,module,exports){
+},{"../microdom.js":1,"assert":4,"sax":2,"util":21}],4:[function(require,module,exports){
 // http://wiki.commonjs.org/wiki/Unit_Testing/1.0
 //
 // THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
