@@ -7,7 +7,6 @@ describe('microdom', function() {
   describe('#microdom', function() {
     it('should allow xml to be passed', function() {
       var dom = microdom('<a href="/test">testing</a>');
-      console.log(dom);
       assert.equal(1, dom.length())
       assert.equal('/test', dom.child(0).attr('href'));
       assert.equal('testing', dom.child(0).child(0).value);
@@ -19,14 +18,13 @@ describe('microdom', function() {
     });
 
     it('should accept a parser and optional callback', function(t) {
-      var parser = sax.parser(true);
+      var parser = sax.createStream(true);
       var dom = microdom(parser, function() {
-        console.log(this.child(0));
         assert.equal('testing', this.child(0).attr('class'));
         t();
       });
 
-      parser.write('<a class="testing">blah</a>').end();
+      parser.end('<a class="testing">blah</a>');
     });
   });
 

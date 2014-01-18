@@ -19,12 +19,12 @@ function parse(string, root) {
   if (!isString(string)) {
     parser = string;
   } else {
-    parser = sax.parser(true);
+    parser = sax.createStream(true);
   }
 
   var loc;
   root = root || new MicroNode();
-  parser.onopentag = function(node) {
+  parser.on('opentag', function(node) {
 
     var Ctor = tags[node.name] || MicroNode;
     var unode = new Ctor(node.attributes);
@@ -36,18 +36,18 @@ function parse(string, root) {
 
     loc.append(unode);
     loc = unode;
-  }
+  });
 
-  parser.ontext = function(text) {
+  parser.on('text', function(text) {
     var node = loc.append('text', {}, text);
-  }
+  })
 
-  parser.onclosetag = function() {
+  parser.on('closetag', function() {
     loc = loc.parent;
-  }
+  });
 
   // Internal control of the parser
-  isString(string) && parser.write(string).end();
+  isString(string) && parser.end(string);
 
   return (root.length() > 1) ? root._children : root.child(0);
 
@@ -208,9 +208,9 @@ module.exports = function(xml, fn) {
   if (xml) {
     parse(xml, dom);
     if (!isString(xml) && typeof fn == 'function') {
-      xml.onend = function() {
+      xml.on('end', function() {
         fn.call(dom);
-      };
+      });
     }
   }
 
