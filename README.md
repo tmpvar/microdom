@@ -116,6 +116,30 @@ node.append('<a href="test">testing</a>');
 In either case the return value of this function is the node that was
 appended
 
+### attr
+
+Get/Set attributes on a node
+
+```javascript
+node.attr('class', 'small');
+console.log(node.attr('class')) // small
+```
+
+This will trigger a `+attr.class` event.  Changing the class after this point generates a `~attr.class` event.
+
+
+You can also remove attributes by passing `null` as the value like so:
+
+```javascript
+var node = microdom().append('a', { class: 'small' });
+
+node.attr('class', null);
+
+console.log(node._attributes.length) // 0
+```
+
+This will trigger a `-attr.class` event
+
 ### child
 
 Get a child at the specified index.  Providing an invalid index will
@@ -171,13 +195,12 @@ Since this is intended as a base level dom implementation, It would be rude if t
 The biggest issue at this point is handling special case tags as they go through their parse step.  To provide a special object for tags you will want to use the `microdom.tag` function.  It works something like this:
 
 ```javascript
-function Anchor(attributes) {
-  // do something with attributes
-  microdom.MicroNode.call(this);
+function Anchor() {
+  this.type = "anchor";
+  microdom.MicroNode.apply(this, arguments);
 }
 
-// Baseline MicroNode prototype
-Anchor.prototype = new microdom.MicroNode();
+inherits(Anchor, microdom.MicroNode);
 
 // add a click method
 Anchor.prototype.click = function() {
@@ -253,7 +276,7 @@ for more info see the `mutation events` section in `test/test.js`
 
 ## Finding plugins
 
-Easy peasy, hit up this url (http://npmsearch.com/?q=keywords:microdom,plugin)[http://npmsearch.com/?q=keywords:microdom,plugin]
+Easy peasy, hit up this url [http://npmsearch.com/?q=keywords:microdom,plugin](http://npmsearch.com/?q=keywords:microdom,plugin)
 
 ## License
 

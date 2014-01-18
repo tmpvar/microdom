@@ -1,7 +1,7 @@
 var sax = require('sax');
 var microdom = require('../microdom.js');
 var assert = require('assert');
-
+var inherits = require('util').inherits;
 
 describe('microdom', function() {
   describe('#microdom', function() {
@@ -353,10 +353,11 @@ describe('microdom', function() {
       var called = false;
       function Anchor() {
         this.type = "anchor";
-        microdom.MicroNode.call(this);
+        microdom.MicroNode.apply(this, arguments);
       }
 
-      Anchor.prototype = new microdom.MicroNode();
+      inherits(Anchor, microdom.MicroNode);
+
       Anchor.prototype.click = function() {
         called = true;
       };
@@ -365,6 +366,9 @@ describe('microdom', function() {
       var node = microdom('<a />').child(0);
       node.click();
  
+      // cleanup after ourselves
+      microdom.tag('a', null);
+
       assert.ok(called);
       assert.equal('anchor', node.type);
     });
@@ -378,11 +382,40 @@ describe('microdom', function() {
 
         dom.on('~attr.class', function(node, attributeValue, oldValue) {
           assert.deepEqual(node, a);
+          assert.equal('biglink', oldValue);
+          assert.equal('small', attributeValue);
+          t();
+        });
+
+        a.attr('class', 'biglink');
+        a.attr('class', 'small');
+      });
+
+      it('should track attribute additions', function(t) {
+        var dom = microdom();
+        var a = dom.append('el');
+
+        dom.on('+attr.class', function(node, attributeValue, oldValue) {
+          assert.deepEqual(node, a);
           assert.equal('biglink', attributeValue);
           t();
         });
 
         a.attr('class', 'biglink');
+      });
+
+      it('should track attribute removals', function(t) {
+        var dom = microdom();
+        var a = dom.append('el', { 'class' : 'biglink' });
+
+        dom.on('-attr.class', function(node, attributeValue, oldValue) {
+          assert.deepEqual(node, a);
+          assert.equal('biglink', oldValue);
+          assert.equal(null, attributeValue);
+          t();
+        });
+
+        a.attr('class', null);
       });
     });
 
@@ -456,7 +489,10 @@ describe('microdom', function() {
 
     it('should work in the case of getElemntsByTagName', function() {
 
-      var dom = microdom('<outer><child><grandchild><leaf class="a"/><leaf class="b"/></grandchild></child></outer>');
+      var dom = microdom([
+        '<outer><child><grandchild><leaf class="a"/>',
+        '<leaf class="b"/></grandchild></child></outer>'].join('')
+      );
 
       microdom.plugin({
         getElementsByTagName : function(name) {

@@ -207,7 +207,13 @@ MicroNode.prototype.attr = function(name, value) {
   if (typeof value !== 'undefined') {
     var old = this.attributes[name] || null;
     this.attributes[name] = value;
-    this.owner.emit('~attr.' + name, this, value, old);
+    if (value === null) {
+      this.owner.emit('-attr.' + name, this, value, old);
+    } else if (old !== null) {
+      this.owner.emit('~attr.' + name, this, value, old);
+    } else {
+      this.owner.emit('+attr.' + name, this, value, old);      
+    }
   }
 
   return this.attributes[name] || null;
