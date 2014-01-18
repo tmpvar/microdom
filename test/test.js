@@ -2,12 +2,25 @@ var microdom = require('../microdom.js');
 var assert = require('assert');
 
 describe('microdom', function() {
+  describe('#child', function() {
+    it('should return the node at specified index', function() {
+      var node = microdom().append({});
+      assert.deepEqual(node.parent.child(0), node);
+    });
+
+    it('should return null when passed an invalid index', function() {
+      var node = microdom().append({});
+      assert.equal(node.parent.child(-1), null);
+      assert.equal(node.parent.child(10), null);
+    });
+  });
+
   describe('#prepend', function() {
     it('should shift onto the front instead of push', function() {
       var dom = microdom().append({}).owner;
       var node = dom.prepend({ first: true });
 
-      assert.ok(dom.children[0].attr('first'));
+      assert.ok(dom.child(0).attr('first'));
     });
 
     it('should setup the owner property', function() {
@@ -28,15 +41,32 @@ describe('microdom', function() {
       var child = parent1.append({});
 
       assert.deepEqual(child.parent, parent1);
-      assert.equal(1, parent1.children.length);
-      assert.equal(0, parent2.children.length);
+      assert.equal(1, parent1.length());
+      assert.equal(0, parent2.length());
 
 
       parent2.prepend(child);
 
       assert.deepEqual(child.parent, parent2);
-      assert.equal(0, parent1.children.length);
-      assert.equal(1, parent2.children.length);
+      assert.equal(0, parent1.length());
+      assert.equal(1, parent2.length());
+    });
+
+    it('should update children owner properties', function() {
+      var dom = microdom();
+      var dom2 = microdom();
+      var node = dom.append({
+        some: 'attributes',
+        id: 'test'
+      });
+
+      node.append({});
+
+      assert.ok(node.child(0).owner === dom);
+
+      dom2.prepend(node);
+
+      assert.ok(node.child(0).owner === dom2);
     });
   });
 
@@ -45,7 +75,7 @@ describe('microdom', function() {
       assert.equal(1, microdom().append({
         some: 'attributes',
         id: 'test'
-      }).owner.children.length);
+      }).owner.length());
     });
 
     it('should setup the owner property', function() {
@@ -66,16 +96,32 @@ describe('microdom', function() {
       var child = parent1.append({});
 
       assert.deepEqual(child.parent, parent1);
-      assert.equal(1, parent1.children.length);
-      assert.equal(0, parent2.children.length);
+      assert.equal(1, parent1.length());
+      assert.equal(0, parent2.length());
 
 
       parent2.append(child);
 
       assert.deepEqual(child.parent, parent2);
-      assert.equal(0, parent1.children.length);
-      assert.equal(1, parent2.children.length);
+      assert.equal(0, parent1.length());
+      assert.equal(1, parent2.length());
+    });
 
+    it('should update children owner properties', function() {
+      var dom = microdom();
+      var dom2 = microdom();
+      var node = dom.append({
+        some: 'attributes',
+        id: 'test'
+      });
+
+      node.append({});
+
+      assert.ok(node.child(0).owner === dom);
+
+      dom2.append(node);
+
+      assert.ok(node.child(0).owner === dom2);
     });
   });
 
@@ -96,7 +142,7 @@ describe('microdom', function() {
 
 
   describe('#remove', function() {
-    it('should remove a child', function() {
+    it('should remove a child by reference', function() {
       var dom = microdom();
       var node = dom.append({
         some: 'attributes',
@@ -105,9 +151,55 @@ describe('microdom', function() {
 
       var res = dom.remove(node);
       
-      assert.equal(0, dom.children.length);
-      assert.ok(res === dom);
+      assert.equal(0, dom.length());
+      assert.ok(res === node);
+      assert.ok(res.parent === null);
+      assert.ok(res.owner === null);
     });
+
+    it('should remove a child by index', function() {
+      var dom = microdom();
+      var node = dom.append({
+        some: 'attributes',
+        id: 'test'
+      });
+
+      var res = dom.remove(0);
+    
+      assert.equal(0, dom.length());
+      assert.ok(res === node);
+      assert.ok(res.parent === null);
+      assert.ok(res.owner === null);
+    });
+
+    it('should return null when provided an invalid index', function() {
+      var dom = microdom();
+      var node = dom.append({
+        some: 'attributes',
+        id: 'test'
+      });
+
+      var res = dom.remove(-1);
+      assert.equal(1, dom.length());
+      assert.ok(res === null);
+    });
+
+    it('should update children owner properties', function() {
+      var dom = microdom();
+      var node = dom.append({
+        some: 'attributes',
+        id: 'test'
+      });
+
+      node.append({});
+
+      var res = dom.remove(0);
+      assert.equal(0, dom.length());
+      assert.ok(res === node);
+      assert.ok(res.child(0).owner === null);
+    });
+
+
   });
 
   describe('#attr', function() {
@@ -132,7 +224,7 @@ describe('microdom', function() {
       assert.equal('a', node.name);
       assert.equal('monkey', node.attr('class'));
       assert.equal('/test', node.attr('href'));
-      assert.equal('hello', node.children[0].value);
+      assert.equal('hello', node.child(0).value);
     });
 
     it('should properly nest children', function() {
@@ -145,9 +237,9 @@ describe('microdom', function() {
 
       var node = microdom.parse(xml);
 
-      assert.equal(5, node.children.length);
-      assert.equal('/test', node.children[1].attr('href'));
-      assert.equal('/test2', node.children[3].attr('href'));
+      assert.equal(5, node.length());
+      assert.equal('/test', node.child(1).attr('href'));
+      assert.equal('/test2', node.child(3).attr('href'));
     });
 
     it('should properly handle interspersed text', function() {
@@ -158,9 +250,9 @@ describe('microdom', function() {
       ].join('\n');
 
       var node = microdom.parse(xml);
-      assert.equal(3, node.children.length);
-      assert.equal('bold', node.children[1].attr('class'));
-      assert.equal('world', node.children[1].children[0].value);
+      assert.equal(3, node.length());
+      assert.equal('bold', node.child(1).attr('class'));
+      assert.equal('world', node.child(1).child(0).value);
     });
 
     it('should keep the casing of tags', function() {
@@ -170,10 +262,10 @@ describe('microdom', function() {
       // multiple elements
       var root = microdom.parse(xml);
 
-      assert.equal(3, root.children.length);
-      assert.equal('A', root.children[0].name);
-      assert.equal('a', root.children[1].name);
-      assert.equal('aBc', root.children[2].name);
+      assert.equal(3, root.length());
+      assert.equal('A', root.child(0).name);
+      assert.equal('a', root.child(1).name);
+      assert.equal('aBc', root.child(2).name);
     });
 
   });
