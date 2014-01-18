@@ -173,6 +173,7 @@ The biggest issue at this point is handling special case tags as they go through
 ```javascript
 function Anchor(attributes) {
   // do something with attributes
+  microdom.MicroNode.call(this);
 }
 
 // Baseline MicroNode prototype
