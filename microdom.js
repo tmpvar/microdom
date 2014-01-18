@@ -4,10 +4,15 @@ var isNumber = function(v) {
   return (typeof v === 'number' || v instanceof Number);
 }
 
-function parse(string) {
+var isString = function(v) {
+  return (typeof v === 'string' || v instanceof String);
+}
+
+function parse(string, root) {
   var parser = sax.parser(true);
 
-  var loc, root = new MicroNode();
+  var loc;
+  root = root || new MicroNode();
   parser.onopentag = function(node) {
     var unode = new MicroNode(node.attributes);
     unode.name = node.name;
@@ -158,8 +163,10 @@ function MicroDom() {
 MicroDom.prototype = new MicroNode();
 
 
-module.exports = function() {
-  return new MicroDom();
+module.exports = function(xml) {
+  var dom = new MicroDom();
+  xml && parse(xml, dom);
+  return dom;
 }
 
 module.exports.parse = parse;

@@ -2,6 +2,20 @@ var microdom = require('../microdom.js');
 var assert = require('assert');
 
 describe('microdom', function() {
+  describe('#microdom', function() {
+    it('should allow xml to be passed', function() {
+      var dom = microdom('<a href="/test">testing</a>');
+      assert.equal(1, dom.length())
+      assert.equal('/test', dom.child(0).attr('href'));
+      assert.equal('testing', dom.child(0).child(0).value);
+    });
+
+    it('should create a dom when no xml is passed', function() {
+      var dom = microdom();
+      assert.equal(0, dom.length());
+    })
+  });
+
   describe('#child', function() {
     it('should return the node at specified index', function() {
       var node = microdom().append({});
@@ -198,8 +212,6 @@ describe('microdom', function() {
       assert.ok(res === node);
       assert.ok(res.child(0).owner === null);
     });
-
-
   });
 
   describe('#attr', function() {
