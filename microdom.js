@@ -1,5 +1,7 @@
 var sax = require('sax');
 
+var tags = {};
+
 var isNumber = function(v) {
   return (typeof v === 'number' || v instanceof Number);
 }
@@ -18,7 +20,9 @@ function parse(string, root) {
   var loc;
   root = root || new MicroNode();
   parser.onopentag = function(node) {
-    var unode = new MicroNode(node.attributes);
+
+    var Ctor = tags[node.name] || MicroNode;
+    var unode = new Ctor(node.attributes);
     unode.name = node.name;
 
     if (!loc) {
@@ -79,7 +83,7 @@ MicroNode.prototype.buildNode = function(name, obj, textContent) {
   }
 
   if (!obj || !obj.isNode) {
-    obj = new MicroNode(obj);
+    obj = (tags[name]) ? new tags[name](obj) : new MicroNode(obj);
   }
 
   if (name) {
@@ -196,7 +200,11 @@ module.exports = function(xml) {
   var dom = new MicroDom();
   xml && parse(xml, dom);
   return dom;
-}
+};
+
+module.exports.tag = function(name, ctor) {
+  tags[name] = ctor;
+};
 
 module.exports.plugin = function(o) {
   var proto = MicroNode.prototype;

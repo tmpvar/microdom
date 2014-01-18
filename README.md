@@ -83,19 +83,12 @@ append an existing `node` to another's children array
 node.append(anotherNode);
 ```
 
-parse and append some xml
-
-```javascript
-
-node.append('<a /><b />');
-```
-
 In either case the return value of this function is the node that was
 appended
 
 ### prepend
 
-works similar to append but instead of putting the incoming node(s) at the end of the children array, it will put it at the beginning
+works similar to append but instead of putting the incoming node at the end of the children array, it will put it at the beginning
 
 ### remove
 
@@ -112,3 +105,62 @@ node.remove(0);
 ```
 
 In either case the child that is being removed is returned to the caller
+
+
+## Extending the microdom
+
+Since this is intended as a base level dom implementation, It would be rude if there were no mechanisms for extending it.  The following sections detail how you would go about making microdom work for you.
+
+### Custom Constructors
+
+The biggest issue at this point is handling special case tags as they go through their parse step.  To provide a special object for tags you will want to use the `microdom.tagMap` object.  It works something like this:
+
+```javascript
+function Anchor(attributes) {
+  // do something with attributes
+}
+
+// Baseline MicroNode prototype
+Anchor.prototype = new microdom.MicroNode();
+
+// add a click method
+Anchor.prototype.click = function() {
+  console.log('clicked!');
+}
+
+// Associate 'a' tags with the Anchor constructort
+microdom.tag('a', Anchor);
+
+microdom('<a />').child(0).click(); // outputs 'clicked!'
+
+```
+
+Now whenever the parser sees an `a` as the name of the tag, an `Anchor` will be created instead of the default `MicroNode`
+
+### Custom Functionality
+
+You can extend the prototype of `microdom.MicroNode` at any point and reap the benefits immediately.
+
+Here's an example that will add a `node.getElementsByTagName` function much like the the dom in your browser.
+
+```javascript
+  microdom.plugin({
+    getElementsByTagName : function(name) {
+      
+      var ret = [], c = this.children(), l = this.length();
+        for (var i=0; i<l; i++) {
+        ret = ret.concat(c[i].getElementsByTagName(name));
+      }
+      
+      if (this.name === name) {
+        ret.push(this);
+      }
+      
+      return ret;
+    }
+  });
+```
+
+## License
+
+MIT (see license.txt)

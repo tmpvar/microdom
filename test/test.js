@@ -325,8 +325,28 @@ describe('microdom', function() {
     });
   });
 
-  describe('parser tag mapping', function() {
 
+  describe('parser tag mapping', function() {
+    it('should allow overrides for tag names', function() {
+
+      var called = false;
+      function Anchor() {
+        this.type = "anchor";
+        microdom.MicroNode.call(this);
+      }
+
+      Anchor.prototype = new microdom.MicroNode();
+      Anchor.prototype.click = function() {
+        called = true;
+      }
+
+      microdom.tag('a', Anchor);
+      var node = microdom('<a />').child(0);
+      node.click();
+ 
+      assert.ok(called);
+      assert.equal('anchor', node.type)
+    });
   });
 
   describe('#plugin', function() {
