@@ -163,5 +163,18 @@ describe('microdom', function() {
       assert.equal('world', node.children[1].children[0].value);
     });
 
+    it('should keep the casing of tags', function() {
+      var xml = '<A /><a /><aBc />';
+
+      // The parser will automatically create an element to house
+      // multiple elements
+      var root = microdom.parse(xml);
+
+      assert.equal(3, root.children.length);
+      assert.equal('A', root.children[0].name);
+      assert.equal('a', root.children[1].name);
+      assert.equal('aBc', root.children[2].name);
+    });
+
   });
 });

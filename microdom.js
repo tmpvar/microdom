@@ -3,18 +3,17 @@ var sax = require('sax');
 function parse(string) {
   var parser = sax.parser(true);
 
-  var loc, root;
+  var loc, root = new MicroNode();
   parser.onopentag = function(node) {
     var unode = new MicroNode(node.attributes);
     unode.name = node.name;
 
-    if (!root) {
-      root = unode;
+    if (!loc) {
       loc = root;
-    } else {
-      loc.append(unode);
-      loc = unode;
     }
+
+    loc.append(unode);
+    loc = unode;
   }
 
   parser.ontext = function(text) {
@@ -29,7 +28,7 @@ function parse(string) {
 
   parser.write(string);
 
-  return root;
+  return (root.children.length > 1) ? root : root.children[0];
 
 };
 
