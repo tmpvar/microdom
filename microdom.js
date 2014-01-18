@@ -54,6 +54,10 @@ MicroNode.prototype.child = function(index) {
   return this._children[index] || null;
 }
 
+MicroNode.prototype.children = function() {
+  return this._children;
+}
+
 MicroNode.prototype.length = function() {
   return this._children.length;
 }
@@ -192,6 +196,17 @@ module.exports = function(xml) {
   var dom = new MicroDom();
   xml && parse(xml, dom);
   return dom;
+}
+
+module.exports.plugin = function(o) {
+  var proto = MicroNode.prototype;
+  if (typeof o === 'function') {
+    o(proto);
+  } else {
+    Object.keys(o).forEach(function(key) {
+      proto[key] = o[key];
+    });
+  }
 }
 
 module.exports.parse = parse;

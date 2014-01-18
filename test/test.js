@@ -323,6 +323,60 @@ describe('microdom', function() {
       assert.equal('a', array[1].name);
       assert.equal('aBc', array[2].name);
     });
+  });
 
+  describe('parser tag mapping', function() {
+
+  });
+
+  describe('#plugin', function() {
+    it('should mutate MicroNode.prototype', function() {
+      var node = new microdom.MicroDom();
+
+      assert.ok(!node.objectPlugin);
+
+      microdom.plugin({
+        objectPlugin: true
+      });
+
+      assert.ok(node.objectPlugin);
+      assert.ok(microdom.MicroNode.prototype.objectPlugin);
+    });
+
+    it('should accept a function as well', function() {
+      var called = false;
+      microdom.plugin(function(proto) {
+        proto.pluggedIn = true;
+      });
+
+      assert.ok(microdom.MicroNode.prototype.pluggedIn);
+    });
+
+    it('should work in the case of getElemntsByTagName', function() {
+
+      var dom = microdom('<outer><child><grandchild><leaf class="a"/><leaf class="b"/></grandchild></child></outer>');
+
+      microdom.plugin({
+        getElementsByTagName : function(name) {
+          
+          var ret = [], c = this.children(), l = this.length();
+          for (var i=0; i<l; i++) {
+            ret = ret.concat(c[i].getElementsByTagName(name));
+          }
+
+          if (this.name === name) {
+            ret.push(this);
+          }
+          
+          return ret;
+        }
+      });
+
+      var nodes = dom.getElementsByTagName('leaf');
+      assert.equal(2, nodes.length);
+      assert.equal('a', nodes[0].attr('class'))
+      assert.equal('b', nodes[1].attr('class'))
+
+    });
   });
 });
