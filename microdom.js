@@ -68,7 +68,8 @@ function parse(string, root) {
 
 function MicroNode(attrs) {
   EventEmitter.call(this);
-  this.attr = attrs || {};
+  this.attributes = {};
+  attrs && this.attr(attrs);
   this._children = [];
 }
 
@@ -130,9 +131,10 @@ MicroNode.prototype.buildNode = function(name, obj, textContent) {
 MicroNode.prototype.prepend = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
   var children = this.children();
+
   for (var i=0; i<obj.length; i++) {
     children.unshift(obj[i]);
-    this.emit('+node', obj[i]);
+    obj[i].owner && obj[i].owner.emit('+node', obj[i]);
   }
   return (obj.length === 1) ? obj[0] : obj;
 };
@@ -140,9 +142,10 @@ MicroNode.prototype.prepend = function(name, obj, value) {
 MicroNode.prototype.append = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
   var children = this.children();
+
   for (var i=0; i<obj.length; i++) {
     children.push(obj[i]);
-    this.emit('+node', obj[i]);
+    obj[i].owner && obj[i].owner.emit('+node', obj[i]);
   }
   return (obj.length === 1) ? obj[0] : obj;
 };
@@ -197,7 +200,7 @@ MicroNode.prototype.remove = function(node) {
 
   node.parent = null;
 
-  node.owner.emit('-node', node);
+  node.owner && node.owner.emit('-node', node);
 
   return node;
 };
@@ -222,11 +225,11 @@ MicroNode.prototype.attr = function(name, value) {
         var old = this.attributes[name] || null;
         this.attributes[name] = value;
         if (value === null) {
-          this.owner.emit('-attr.' + name, this, value, old);
+          this.owner && this.owner.emit('-attr.' + name, this, value, old);
         } else if (old !== null) {
-          this.owner.emit('~attr.' + name, this, value, old);
+          this.owner && this.owner.emit('~attr.' + name, this, value, old);
         } else {
-          this.owner.emit('+attr.' + name, this, value, old);      
+          this.owner && this.owner.emit('+attr.' + name, this, value, old);
         }        
       }
     }
