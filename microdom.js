@@ -26,9 +26,7 @@ function parse(string, root) {
   }
 
   parser.ontext = function(text) {
-    var node = loc.append({});
-    node.name = "text";
-    node.value = text;
+    var node = loc.append('text', {}, text);
   }
 
   parser.onclosetag = function() {
@@ -40,7 +38,6 @@ function parse(string, root) {
   return (root._children.length > 1) ? root : root._children[0];
 
 };
-
 
 function MicroNode(attrs) {
   this.attributes = attrs || {};
@@ -57,25 +54,18 @@ MicroNode.prototype.length = function() {
   return this._children.length;
 }
 
-MicroNode.prototype.prepend = function(obj) {
-  if (!obj.isNode) {
+MicroNode.prototype.buildNode = function(name, obj, textContent) {
+  if (!isString(name)) {
+    obj = name;
+    name = null;
+  }
+
+  if (!obj || !obj.isNode) {
     obj = new MicroNode(obj);
   }
 
-  if (obj.parent) {
-    obj.parent.remove(obj);
-  }
-
-  obj.parent = this;
-  obj.own(this.owner || this);
-
-  this._children.unshift(obj);
-  return obj;
-};
-
-MicroNode.prototype.append = function(obj) {
-  if (!obj.isNode) {
-    obj = new MicroNode(obj);
+  if (name) {
+    obj.name = name;
   }
 
   if (obj.parent) {
@@ -86,8 +76,23 @@ MicroNode.prototype.append = function(obj) {
 
   obj.parent = this;
 
+  if (textContent) {
+    obj.value = textContent;
+  }
+
   obj.own(this.owner || this);
 
+  return obj;
+} 
+
+MicroNode.prototype.prepend = function(name, obj, value) {
+  obj = this.buildNode(name, obj, value);
+  this._children.unshift(obj);
+  return obj;
+};
+
+MicroNode.prototype.append = function(name, obj, value) {
+  obj = this.buildNode(name, obj, value);
   this._children.push(obj);
   return obj;
 };
@@ -122,7 +127,6 @@ MicroNode.prototype.own = function(owner) {
 
 MicroNode.prototype.remove = function(node) {
   var c = this._children, l = c.length;
-
 
   if (l) {
     if (isNumber(node)) {

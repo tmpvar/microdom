@@ -7,6 +7,7 @@ describe('microdom', function() {
       var dom = microdom('<a href="/test">testing</a>');
       assert.equal(1, dom.length())
       assert.equal('/test', dom.child(0).attr('href'));
+      console.log(dom.child(0).child(0))
       assert.equal('testing', dom.child(0).child(0).value);
     });
 
@@ -29,6 +30,17 @@ describe('microdom', function() {
     });
   });
 
+  describe('#buildNode', function() {
+    it('should add .value if specified', function() {
+      var dom = microdom();
+      var node = dom.buildNode('a', { href : '/test'}, 'test link');
+      assert.equal('/test', node.attr('href'))
+      assert.equal('test link', node.value);
+      assert.equal('a', node.name);
+    })
+  })
+
+
   describe('#prepend', function() {
     it('should shift onto the front instead of push', function() {
       var dom = microdom().append({}).owner;
@@ -36,6 +48,13 @@ describe('microdom', function() {
 
       assert.ok(dom.child(0).attr('first'));
     });
+
+    it('should setup the name if passed', function() {
+      assert.equal('a', microdom().prepend('a', {
+        test: 123
+      }).name);
+    });
+
 
     it('should setup the owner property', function() {
       var dom = microdom();
@@ -90,6 +109,12 @@ describe('microdom', function() {
         some: 'attributes',
         id: 'test'
       }).owner.length());
+    });
+
+    it('should setup the name if passed', function() {
+      assert.equal('a', microdom().append('a', {
+        test: 123
+      }).name);
     });
 
     it('should setup the owner property', function() {
