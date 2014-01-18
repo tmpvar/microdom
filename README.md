@@ -83,12 +83,19 @@ append an existing `node` to another's children array
 node.append(anotherNode);
 ```
 
+parse and append some xml
+
+```javascript
+
+node.append('<a /><b />');
+```
+
 In either case the return value of this function is the node that was
 appended
 
 ### prepend
 
-works similar to append but instead of putting the incoming node at the end of the children array, it will put it at the beginning
+works similar to append but instead of putting the incoming node(s) at the end of the children array, it will put it at the beginning
 
 ### remove
 

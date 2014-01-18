@@ -8,6 +8,10 @@ var isString = function(v) {
   return (typeof v === 'string' || v instanceof String);
 }
 
+var isArray = function(v) {
+  return (typeof v === 'array' || v instanceof Array);
+}
+
 function parse(string, root) {
   var parser = sax.parser(true);
 
@@ -35,7 +39,7 @@ function parse(string, root) {
 
   parser.write(string);
 
-  return (root._children.length > 1) ? root : root._children[0];
+  return (root.length() > 1) ? root._children : root.child(0);
 
 };
 
@@ -55,9 +59,19 @@ MicroNode.prototype.length = function() {
 }
 
 MicroNode.prototype.buildNode = function(name, obj, textContent) {
+  
   if (!isString(name)) {
     obj = name;
     name = null;
+  } else if (
+    typeof obj === 'undefined' && 
+    typeof textContent === 'undefined' &&
+    name.indexOf('<') > -1
+    )
+  {
+    // handle xml
+    obj = parse(name);
+    return obj;
   }
 
   if (!obj || !obj.isNode) {
@@ -87,13 +101,21 @@ MicroNode.prototype.buildNode = function(name, obj, textContent) {
 
 MicroNode.prototype.prepend = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
-  this._children.unshift(obj);
+  if (isArray(obj)) {
+    Array.prototype.unshift.apply(this._children, obj);
+  } else {
+    this._children.unshift(obj);
+  }
   return obj;
 };
 
 MicroNode.prototype.append = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
-  this._children.push(obj);
+  if (isArray(obj)) {
+    Array.prototype.push.apply(this._children, obj);
+  } else {
+    this._children.push(obj);
+  }
   return obj;
 };
 

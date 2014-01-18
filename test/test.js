@@ -7,7 +7,6 @@ describe('microdom', function() {
       var dom = microdom('<a href="/test">testing</a>');
       assert.equal(1, dom.length())
       assert.equal('/test', dom.child(0).attr('href'));
-      console.log(dom.child(0).child(0))
       assert.equal('testing', dom.child(0).child(0).value);
     });
 
@@ -101,6 +100,17 @@ describe('microdom', function() {
 
       assert.ok(node.child(0).owner === dom2);
     });
+
+    it('should be able to prepend raw xml', function() {
+      var dom = microdom();
+      dom.append({ last : true });
+
+      dom.prepend('<a /><b />');
+
+      assert.ok('a', dom.child(0).name);
+      assert.ok('b', dom.child(1).name);
+      assert.ok(dom.child(2).attr('last'));
+    });
   });
 
   describe('#append', function() {
@@ -162,6 +172,17 @@ describe('microdom', function() {
 
       assert.ok(node.child(0).owner === dom2);
     });
+
+    it('should be able to append raw xml', function() {
+      var dom = microdom();
+      dom.append({ last : true });
+
+      dom.append('<a /><b />');
+      assert.ok('a', dom.child(1).name);
+      assert.ok('b', dom.child(2).name);
+      assert.ok(dom.child(0).attr('last'));
+    });
+
   });
 
   describe('#indexOf', function() {
@@ -295,14 +316,12 @@ describe('microdom', function() {
     it('should keep the casing of tags', function() {
       var xml = '<A /><a /><aBc />';
 
-      // The parser will automatically create an element to house
-      // multiple elements
-      var root = microdom.parse(xml);
+      var array = microdom.parse(xml);
 
-      assert.equal(3, root.length());
-      assert.equal('A', root.child(0).name);
-      assert.equal('a', root.child(1).name);
-      assert.equal('aBc', root.child(2).name);
+      assert.equal(3, array.length);
+      assert.equal('A', array[0].name);
+      assert.equal('a', array[1].name);
+      assert.equal('aBc', array[2].name);
     });
 
   });
