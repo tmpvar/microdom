@@ -226,7 +226,10 @@ describe('microdom', function() {
       assert.equal(0, dom.length());
       assert.ok(res === node);
       assert.ok(res.parent === null);
-      assert.ok(res.owner === null);
+
+      // Ownership is not updated until the
+      // orphan changes doms
+      assert.ok(res.owner === dom);
     });
 
     it('should remove a child by index', function() {
@@ -241,7 +244,10 @@ describe('microdom', function() {
       assert.equal(0, dom.length());
       assert.ok(res === node);
       assert.ok(res.parent === null);
-      assert.ok(res.owner === null);
+
+      // Ownership is not updated until the
+      // orphan changes doms
+      assert.ok(res.owner === dom);
     });
 
     it('should return null when provided an invalid index', function() {
@@ -268,7 +274,10 @@ describe('microdom', function() {
       var res = dom.remove(0);
       assert.equal(0, dom.length());
       assert.ok(res === node);
-      assert.ok(res.child(0).owner === null);
+
+      // Ownership is not updated until the
+      // orphan changes doms
+      assert.ok(res.child(0).owner === dom);
     });
   });
 

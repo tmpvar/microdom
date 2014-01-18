@@ -110,8 +110,6 @@ MicroNode.prototype.buildNode = function(name, obj, textContent) {
   }
 
   if (obj.parent) {
-    // TODO: optimize this so it doesn't visit 
-    //       then entire tree.
     obj.parent.remove(obj);
   }
 
@@ -129,9 +127,9 @@ MicroNode.prototype.buildNode = function(name, obj, textContent) {
 MicroNode.prototype.prepend = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
   if (isArray(obj)) {
-    Array.prototype.unshift.apply(this._children, obj);
+    Array.prototype.unshift.apply(this.children(), obj);
   } else {
-    this._children.unshift(obj);
+    this.children().unshift(obj);
   }
   return obj;
 };
@@ -139,15 +137,15 @@ MicroNode.prototype.prepend = function(name, obj, value) {
 MicroNode.prototype.append = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
   if (isArray(obj)) {
-    Array.prototype.push.apply(this._children, obj);
+    Array.prototype.push.apply(this.children(), obj);
   } else {
-    this._children.push(obj);
+    this.children().push(obj);
   }
   return obj;
 };
 
 MicroNode.prototype.indexOf = function(node) {
-  var c = this._children, l = c.length, i = -1;
+  var c = this.children(), l = this.length(), i = -1;
   if (l) {
     for (i = 0; i<l; i++) {
       if (node === c[i]) {
@@ -160,14 +158,15 @@ MicroNode.prototype.indexOf = function(node) {
 };
 
 MicroNode.prototype.own = function(owner) {
-  var c = this._children, l = c.length;
+  if (this.owner !== owner) {
+    var c = this.children(), l = this.length();
+    this.owner = owner;
 
-  this.owner = owner;
-
-  if (l) {
-    for (var i = 0; i<l; i++) {
-      c[i].own(owner);
-      c[i].owner = owner;
+    if (l) {
+      for (var i = 0; i<l; i++) {
+        c[i].own(owner);
+        c[i].owner = owner;
+      }
     }
   }
 
@@ -175,7 +174,7 @@ MicroNode.prototype.own = function(owner) {
 };
 
 MicroNode.prototype.remove = function(node) {
-  var c = this._children, l = c.length;
+  var c = this.children(), l = this.length();
 
   if (l) {
     if (isNumber(node)) {
@@ -194,8 +193,6 @@ MicroNode.prototype.remove = function(node) {
   }
 
   node.parent = null;
-
-  node.own(null);
 
   return node;
 };
@@ -1897,7 +1894,10 @@ describe('microdom', function() {
       assert.equal(0, dom.length());
       assert.ok(res === node);
       assert.ok(res.parent === null);
-      assert.ok(res.owner === null);
+
+      // Ownership is not updated until the
+      // orphan changes doms
+      assert.ok(res.owner === dom);
     });
 
     it('should remove a child by index', function() {
@@ -1912,7 +1912,10 @@ describe('microdom', function() {
       assert.equal(0, dom.length());
       assert.ok(res === node);
       assert.ok(res.parent === null);
-      assert.ok(res.owner === null);
+
+      // Ownership is not updated until the
+      // orphan changes doms
+      assert.ok(res.owner === dom);
     });
 
     it('should return null when provided an invalid index', function() {
@@ -1939,7 +1942,10 @@ describe('microdom', function() {
       var res = dom.remove(0);
       assert.equal(0, dom.length());
       assert.ok(res === node);
-      assert.ok(res.child(0).owner === null);
+
+      // Ownership is not updated until the
+      // orphan changes doms
+      assert.ok(res.child(0).owner === dom);
     });
   });
 
