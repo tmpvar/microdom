@@ -7,7 +7,7 @@ describe('microdom', function() {
   describe('#microdom', function() {
     it('should allow xml to be passed', function() {
       var dom = microdom('<a href="/test">testing</a>');
-      assert.equal(1, dom.length())
+      assert.equal(1, dom.length());
       assert.equal('/test', dom.child(0).attr('href'));
       assert.equal('testing', dom.child(0).child(0).value);
     });
@@ -45,11 +45,11 @@ describe('microdom', function() {
     it('should add .value if specified', function() {
       var dom = microdom();
       var node = dom.buildNode('a', { href : '/test'}, 'test link');
-      assert.equal('/test', node.attr('href'))
+      assert.equal('/test', node.attr('href'));
       assert.equal('test link', node.value);
       assert.equal('a', node.name);
-    })
-  })
+    });
+  });
 
 
   describe('#prepend', function() {
@@ -204,7 +204,7 @@ describe('microdom', function() {
       var b = dom.append({ name : 'b' });
       var c = dom.append({ name : 'c' });
 
-      assert.equal(1, dom.indexOf(b))
+      assert.equal(1, dom.indexOf(b));
     });
 
     it('should return -1 when the node is not found', function() {
@@ -350,14 +350,14 @@ describe('microdom', function() {
       Anchor.prototype = new microdom.MicroNode();
       Anchor.prototype.click = function() {
         called = true;
-      }
+      };
 
       microdom.tag('a', Anchor);
       var node = microdom('<a />').child(0);
       node.click();
  
       assert.ok(called);
-      assert.equal('anchor', node.type)
+      assert.equal('anchor', node.type);
     });
   });
 
@@ -406,8 +406,8 @@ describe('microdom', function() {
 
       var nodes = dom.getElementsByTagName('leaf');
       assert.equal(2, nodes.length);
-      assert.equal('a', nodes[0].attr('class'))
-      assert.equal('b', nodes[1].attr('class'))
+      assert.equal('a', nodes[0].attr('class'));
+      assert.equal('b', nodes[1].attr('class'));
 
     });
   });

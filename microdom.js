@@ -4,15 +4,15 @@ var tags = {};
 
 var isNumber = function(v) {
   return (typeof v === 'number' || v instanceof Number);
-}
+};
 
 var isString = function(v) {
   return (typeof v === 'string' || v instanceof String);
-}
+};
 
-var isArray = function(v) {
-  return (typeof v === 'array' || v instanceof Array);
-}
+var isArray = Array.isArray || function(v) {
+  return (v instanceof Array);
+};
 
 function parse(string, root) {
   var parser;
@@ -40,18 +40,23 @@ function parse(string, root) {
 
   parser.on('text', function(text) {
     var node = loc.append('text', {}, text);
-  })
+  });
 
   parser.on('closetag', function() {
     loc = loc.parent;
   });
 
   // Internal control of the parser
-  isString(string) && parser.end(string);
+  if (isString(string)) {
+    parser.end(string);
+  }
 
-  return (root.length() > 1) ? root._children : root.child(0);
-
-};
+  if (root.length() > 1) {
+    return root.children();
+  } else {
+    return root.child(0);
+  }
+}
 
 function MicroNode(attrs) {
   this.attributes = attrs || {};
@@ -62,15 +67,15 @@ MicroNode.prototype.isNode = true;
 
 MicroNode.prototype.child = function(index) {
   return this._children[index] || null;
-}
+};
 
 MicroNode.prototype.children = function() {
   return this._children;
-}
+};
 
 MicroNode.prototype.length = function() {
   return this._children.length;
-}
+};
 
 MicroNode.prototype.buildNode = function(name, obj, textContent) {
   
@@ -111,7 +116,7 @@ MicroNode.prototype.buildNode = function(name, obj, textContent) {
   obj.own(this.owner || this);
 
   return obj;
-} 
+};
 
 MicroNode.prototype.prepend = function(name, obj, value) {
   obj = this.buildNode(name, obj, value);
@@ -167,7 +172,7 @@ MicroNode.prototype.remove = function(node) {
   if (l) {
     if (isNumber(node)) {
       if (node < 0 || node >= l) {
-        return null
+        return null;
       }
 
       node = c.splice(node, 1)[0];
@@ -198,7 +203,7 @@ MicroNode.prototype.attr = function(name, value) {
 
 function MicroDom() {
   MicroNode.call(this);
-};
+}
 
 MicroDom.prototype = new MicroNode();
 
@@ -230,7 +235,7 @@ module.exports.plugin = function(o) {
       proto[key] = o[key];
     });
   }
-}
+};
 
 module.exports.parse = parse;
 module.exports.MicroNode = MicroNode;
