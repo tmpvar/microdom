@@ -216,6 +216,10 @@ Here's an example that will add a `node.getElementsByTagName` function much like
   });
 ```
 
+## Finding plugins
+
+Easy peasy, hit up this url (http://npmsearch.com/?q=keywords:microdom,plugin)[http://npmsearch.com/?q=keywords:microdom,plugin]
+
 ## License
 
 MIT (see license.txt)
