@@ -12,13 +12,13 @@ After writing jsdom, some things have been bugging me.
  * how do I get the dom to be faster?
 
 I'll attempt to answer these questions with this library.  Sure, it's
-non-standard, but in the majority of cases you don't really the rigidity that the dom spec forces you into.
+non-standard, but in the majority of cases you don't really need the rigidity that the dom spec forces you into.
 
 ## So how does it work?
 
 It's simple. There is a constructor called `MicroNode` which is going to be the basis of this library.  `MicroDom` extends off of this and acts as nothing more than a node to keep track of where the root of the document is.  Each `MicroNode` has a reference to it's parent and root, and these are mantained for you when you use the management methods specified below.
 
-`MicroNode`s have node idea what a normal html element is and whether or not they are one.  For many cases, it is not important. Especially in an environment where there there is no graphics being displayed or user input.  read: node.js or in a webworker
+`MicroNode`s have node idea what a normal html element is and whether or not they are one.  For many cases, it is not important. Especially in an environment where there there are no graphics being displayed or users to create input events.  read: node.js or in a webworker
 
 __there is no such thing as a live nodelist__ \*waves spoon\*
 
@@ -64,6 +64,8 @@ Huh?
 Well, the idea is that if you need to convert an `href` or do special processing on attributes/nodes, you should probably do that when you need it.  If I tried to handle all of the cases for you, then I'd just be building jsdom again!
 
 Put another way, if you need the `href` of an anchor to resolve based on the `<base>` element of the page or some other logic, write a module that does exactly that.
+
+See the (Extendign the microdom)[#extending-the-microdom] section below
 
 ## Sounds good, what methods can I use?
 
@@ -139,7 +141,7 @@ var length = node.length();
 
 ### prepend
 
-works similar to append but instead of putting the incoming node at the end of the children array, it will put it at the beginning
+works similar to `append` but instead of putting the incoming node at the end of the children array, it will put it at the beginning
 
 ### remove
 

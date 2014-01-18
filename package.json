@@ -16,9 +16,13 @@
     "mocha": "1.x"
   },
   "scripts": {
-    "test": "node_modules/mocha/bin/mocha test/test.js -R spec"
+    "test": "node_modules/mocha/bin/mocha test/test.js -R spec",
+    "minify": "browserify -e microdom.js | uglifyjs > microdom.min.js"
   },
   "dependencies": {
     "sax": "~0.6.0"
-  }
+  },
+  "keywords" : [
+    "microdom", "dom"
+  ]
 }
