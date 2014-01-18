@@ -136,8 +136,6 @@ You can also remove attributes by passing `null` as the value like so:
 var node = microdom().append('a', { class: 'small' });
 
 node.attr('class', null);
-
-console.log(node._attributes.length) // 0
 ```
 
 This will trigger a `-attr.class` event
