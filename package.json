@@ -1,6 +1,6 @@
 {
   "name": "microdom",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "",
   "main": "microdom.js",
   "repository": {
@@ -17,7 +17,8 @@
   },
   "scripts": {
     "test": "node_modules/mocha/bin/mocha test/test.js -R spec",
-    "minify": "browserify -e microdom.js | uglifyjs > microdom.min.js"
+    "release" : "npm run minify",
+    "minify": "browserify -e microdom.js | uglifyjs > microdom.min.js && browserify -e test/test.js -o test/test.bundle.js"
   },
   "dependencies": {
     "sax": "~0.6.0"
