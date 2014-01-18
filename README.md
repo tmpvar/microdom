@@ -2,6 +2,8 @@
 
 A tiny dom that is not compliant with the w3c dom specifcation
 
+![travis](https://api.travis-ci.org/tmpvar/microdom.png)
+
 ## Why?
 
 After writing jsdom, some things have been bugging me.
