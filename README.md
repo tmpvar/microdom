@@ -12,7 +12,7 @@ After writing jsdom, some things have been bugging me.
  * how do I get the dom to be faster?
 
 I'll attempt to answer these questions with this library.  Sure, it's
-non-standard, but in the majority of cases you don't really the java-like rigidity that the dom spec forces you into.
+non-standard, but in the majority of cases you don't really the rigidity that the dom spec forces you into.
 
 ## So how does it work?
 
@@ -52,8 +52,8 @@ Alright, let's start off with something simple
 
 // var microdom = require('microdom'); // node
 
-var dom = microdom('<a href="http://tmpvar.com">tmpvar</a>');
-console.log(dom.children[0].attr('href')); // http://tmpvar.com
+var dom = microdom('<base href="http://url.com"/><a href="/test">tmpvar</a>');
+console.log(dom.child(1).attr('href')); // /test
 
 ```
 
@@ -74,7 +74,7 @@ for the parser stream to finish before operating on the dom!
 
 Here's what that looks like:
 
-```javscript
+```javascript
 
 var sax = require('sax');
 var microdom = require('microdom');
@@ -103,8 +103,39 @@ append an existing `node` to another's children array
 node.append(anotherNode);
 ```
 
+append some xml
+
+```javascript
+node.append('<a href="test">testing</a>');
+```
+
 In either case the return value of this function is the node that was
 appended
+
+### child
+
+Get a child at the specified index.  Providing an invalid index will
+result in this method returning `null`.
+
+```javascript
+var child = node.child(0);
+```
+
+### children
+
+Get the array of children that have the node as their parent.
+
+```javascript
+var array = node.children();
+```
+
+### length
+
+Get the number of children attached to this node
+
+```javascript
+var length = node.length();
+```
 
 ### prepend
 
@@ -133,7 +164,7 @@ Since this is intended as a base level dom implementation, It would be rude if t
 
 ### Custom Constructors
 
-The biggest issue at this point is handling special case tags as they go through their parse step.  To provide a special object for tags you will want to use the `microdom.tagMap` object.  It works something like this:
+The biggest issue at this point is handling special case tags as they go through their parse step.  To provide a special object for tags you will want to use the `microdom.tag` function.  It works something like this:
 
 ```javascript
 function Anchor(attributes) {
@@ -168,8 +199,8 @@ Here's an example that will add a `node.getElementsByTagName` function much like
     getElementsByTagName : function(name) {
       
       var ret = [], c = this.children(), l = this.length();
-        for (var i=0; i<l; i++) {
-        ret = ret.concat(c[i].getElementsByTagName(name));
+      for (var i=0; i<l; i++) {
+        Array.prototype.push.apply(ret, c[i].getElementsByTagName(name));
       }
       
       if (this.name === name) {

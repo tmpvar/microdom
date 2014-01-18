@@ -393,7 +393,7 @@ describe('microdom', function() {
           
           var ret = [], c = this.children(), l = this.length();
           for (var i=0; i<l; i++) {
-            ret = ret.concat(c[i].getElementsByTagName(name));
+            Array.prototype.push.apply(ret, c[i].getElementsByTagName(name));
           }
 
           if (this.name === name) {

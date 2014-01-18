@@ -42,6 +42,13 @@ function parse(string, root) {
     var node = loc.append('text', {}, text);
   });
 
+  parser.on('error', function(error) {
+    if (!root.errors) {
+      root.errors = [];
+    }
+    root.errors.push(error);
+  });
+
   parser.on('closetag', function() {
     loc = loc.parent;
   });
