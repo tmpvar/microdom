@@ -67,7 +67,7 @@ Well, the idea is that if you need to convert an `href` or do special processing
 
 Put another way, if you need the `href` of an anchor to resolve based on the `<base>` element of the page or some other logic, write a module that does exactly that.
 
-See the [Extending the microdom][#extending-the-microdom] section below
+See the [Extending the microdom](#extending-the-microdom) section below
 
 ## Sounds good, what methods can I use?
 
