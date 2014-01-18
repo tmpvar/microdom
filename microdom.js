@@ -188,7 +188,6 @@ function MicroDom() {
 
 MicroDom.prototype = new MicroNode();
 
-
 module.exports = function(xml) {
   var dom = new MicroDom();
   xml && parse(xml, dom);
@@ -196,3 +195,5 @@ module.exports = function(xml) {
 }
 
 module.exports.parse = parse;
+module.exports.MicroNode = MicroNode;
+module.exports.MicroDom = MicroDom;
