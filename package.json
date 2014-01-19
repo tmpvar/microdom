@@ -14,7 +14,8 @@
   },
   "devDependencies": {
     "mocha": "1.x",
-    "istanbul": "~0.2.3"
+    "istanbul": "~0.2.3",
+    "benchmark": "~1.0.0"
   },
   "scripts": {
     "test": "node_modules/mocha/bin/mocha test/test.js -R spec",
