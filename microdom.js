@@ -268,9 +268,11 @@ microdom.plugin = function(o) {
   if (typeof o === 'function') {
     o(proto);
   } else {
-    Object.keys(o).forEach(function(key) {
-      proto[key] = o[key];
-    });
+    for (var key in o) {
+      if (o.hasOwnProperty(key)) {
+        proto[key] = o[key];
+      }
+    }
   }
 };
 
