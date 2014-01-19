@@ -3,8 +3,6 @@ var inherits = require('util').inherits;
 var EventEmitter = require('events').EventEmitter;
 var tags = {};
 
-![].filter && (Array.prototype.filter = require('array-filter'));
-
 var isNumber = function(v) {
   return (typeof v === 'number' || v instanceof Number);
 };
