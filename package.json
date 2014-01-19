@@ -24,7 +24,8 @@
     "cover": "istanbul cover _mocha -- test/test.js -R spec"
   },
   "dependencies": {
-    "sax": "~0.6.0"
+    "sax": "~0.6.0",
+    "array-filter": "~0.2.0"
   },
   "keywords": [
     "microdom",
