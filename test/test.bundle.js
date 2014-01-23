@@ -4,8 +4,6 @@ var inherits = require('util').inherits;
 var EventEmitter = require('events').EventEmitter;
 var tags = {};
 
-![].filter && (Array.prototype.filter = require('array-filter'));
-
 var isNumber = function(v) {
   return (typeof v === 'number' || v instanceof Number);
 };
@@ -18,32 +16,19 @@ var isArray = Array.isArray || function(v) {
   return (v instanceof Array);
 };
 
-function parse(string, root) {
-  var parser;
-  if (!isString(string)) {
-    parser = string;
-  } else {
-    parser = sax.createStream(true);
-  }
 
-  var loc;
-  root = root || new MicroNode();
+function parserRigging(parser, root) {
+  var loc = root;
+
   parser.on('opentag', function(node) {
-
-    var Ctor = tags[node.name] || MicroNode;
-    var unode = new Ctor(node.attributes);
+    var unode = new (tags[node.name] || MicroNode)(node.attributes);
     unode.name = node.name;
 
-    if (!loc) {
-      loc = root;
-    }
-
-    loc.append(unode);
-    loc = unode;
+    loc = loc.append(unode);
   });
 
   parser.on('text', function(text) {
-    var node = loc.append('text', {}, text);
+    loc.append('text', {}, text);
   });
 
   parser.on('error', function(error) {
@@ -56,6 +41,20 @@ function parse(string, root) {
   parser.on('closetag', function() {
     loc = loc.parent;
   });
+}
+
+
+function parse(string, root) {
+  var parser;
+  if (!isString(string)) {
+    parser = string;
+  } else {
+    parser = sax.createStream(true);
+  }
+
+  root = root || new MicroNode();
+
+  parserRigging(parser, root);
 
   // Internal control of the parser
   if (isString(string)) {
@@ -79,6 +78,10 @@ function MicroNode(attrs) {
 inherits(MicroNode, EventEmitter);
 
 MicroNode.prototype.isNode = true;
+MicroNode.prototype._children = null;
+MicroNode.prototype.attributes = null;
+MicroNode.prototype.parent = null;
+MicroNode.prototype.owner = null;
 
 MicroNode.prototype.child = function(index) {
   return this._children[index] || null;
@@ -208,38 +211,31 @@ MicroNode.prototype.remove = function(node) {
   return node;
 };
 
-// Attribute getter/setter
 MicroNode.prototype.attr = function(name, value) {
-  var obj;
+  var a = this.attributes;
+  if (typeof value !== 'undefined') {
+    var op = '~';
+    var old = a[name] || null;
+    a[name] = value;
 
-  if (!isString(name) || (isString(name) && typeof value !== 'undefined')) {
-    if (isString(name)) {
-      obj = {};
-      obj[name] = value;
-    } else {
-      obj = name;
+    if (value === null) {
+      op = '-';
+    } else if (old === null) {
+      op = '+';
     }
 
-    for (name in obj) {
+    this.owner && this.owner.emit(op + 'attr.' + name, this, old, value);
 
-      if (obj.hasOwnProperty(name)) { 
-        value = obj[name];
-
-        var old = this.attributes[name] || null;
-        this.attributes[name] = value;
-        if (value === null) {
-          this.owner && this.owner.emit('-attr.' + name, this, value, old);
-        } else if (old !== null) {
-          this.owner && this.owner.emit('~attr.' + name, this, value, old);
-        } else {
-          this.owner && this.owner.emit('+attr.' + name, this, value, old);
-        }        
+  } else if (isArray(name) || typeof name === 'object') {
+    for (key in name) {
+      if (name.hasOwnProperty(key)) { 
+        this.attr(key, name[key]);
       }
     }
   }
 
-  return this.attributes[name] || null;
-};
+  return a[name] || null;
+}
 
 function MicroDom() {
   MicroNode.call(this);
@@ -279,6 +275,19 @@ microdom.plugin = function(o) {
   }
 };
 
+microdom.createParserStream = function(parent, strict, options) {
+  var parser = sax.createStream(strict);
+  var parent = parent || new MicroDom();
+  parserRigging
+  parserRigging(parser, parent);
+
+  parser.on('end', function() {
+    parser.emit('dom', parent);
+  });
+
+  return parser; 
+};
+
 microdom.parse = parse;
 microdom.MicroNode = MicroNode;
 microdom.MicroDom = MicroDom;
@@ -292,34 +301,7 @@ if (typeof window !== 'undefined') {
   window.microdom = window.microdom || microdom;
 }
 
-},{"array-filter":2,"events":6,"sax":3,"util":22}],2:[function(require,module,exports){
-
-/**
- * Array#filter.
- *
- * @param {Array} arr
- * @param {Function} fn
- * @param {Object=} self
- * @return {Array}
- * @throw TypeError
- */
-
-module.exports = function (arr, fn, self) {
-  if (arr.filter) return arr.filter(fn);
-  if (void 0 === arr || null === arr) throw new TypeError;
-  if ('function' != typeof fn) throw new TypeError;
-  var ret = [];
-  for (var i = 0; i < arr.length; i++) {
-    if (!hasOwn.call(arr, i)) continue;
-    var val = arr[i];
-    if (fn.call(self, val, i, arr)) ret.push(val);
-  }
-  return ret;
-};
-
-var hasOwn = Object.prototype.hasOwnProperty;
-
-},{}],3:[function(require,module,exports){
+},{"events":4,"sax":2,"util":20}],2:[function(require,module,exports){
 var Buffer=require("__browserify_Buffer");// wrapper for non-node envs
 ;(function (sax) {
 
@@ -411,6 +393,42 @@ if (!Object.keys) Object.keys = function (o) {
   var a = []
   for (var i in o) if (o.hasOwnProperty(i)) a.push(i)
   return a
+}
+
+if (!Array.prototype.filter)
+{
+  Array.prototype.filter = function(fun /*, thisArg */)
+  {
+    "use strict";
+
+    if (this === void 0 || this === null)
+      throw new TypeError();
+
+    var t = Object(this);
+    var len = t.length >>> 0;
+    if (typeof fun != "function")
+      throw new TypeError();
+
+    var res = [];
+    var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
+    for (var i = 0; i < len; i++)
+    {
+      if (i in t)
+      {
+        var val = t[i];
+
+        // NOTE: Technically this should Object.defineProperty at
+        //       the next index, as push can be affected by
+        //       properties on Object.prototype and Array.prototype.
+        //       But that method's new, and collisions should be
+        //       rare, so use the more-compatible alternative.
+        if (fun.call(thisArg, val, i, t))
+          res.push(val);
+      }
+    }
+
+    return res;
+  };
 }
 
 function checkBufferLength (parser) {
@@ -1731,30 +1749,43 @@ if (!String.fromCodePoint) {
 
 })(typeof exports === "undefined" ? sax = {} : exports)
 
-},{"__browserify_Buffer":8,"stream":14,"string_decoder":20}],4:[function(require,module,exports){
+},{"__browserify_Buffer":6,"stream":12,"string_decoder":18}],3:[function(require,module,exports){
 var sax = require('sax');
 var microdom = require('../microdom.js');
-var assert = require('assert');
+
+
+var equal = function(a, b, msg) {
+  if (a!==b) {
+    throw new Error(msg?msg: a + ' !== ' + b);
+  }
+};
+
+var ok = function(a, msg) {
+  if (!a) {
+    throw new Error(msg || a + ' is not ok');
+  }
+};
+
 var inherits = require('util').inherits;
 
 describe('microdom', function() {
   describe('#microdom', function() {
     it('should allow xml to be passed', function() {
       var dom = microdom('<a href="/test">testing</a>');
-      assert.equal(1, dom.length());
-      assert.equal('/test', dom.child(0).attr('href'));
-      assert.equal('testing', dom.child(0).child(0).value);
+      equal(1, dom.length());
+      equal('/test', dom.child(0).attr('href'));
+      equal('testing', dom.child(0).child(0).value);
     });
 
     it('should create a dom when no xml is passed', function() {
       var dom = microdom();
-      assert.equal(0, dom.length());
+      equal(0, dom.length());
     });
 
     it('should accept a parser and optional callback', function(t) {
       var parser = sax.createStream(true);
       var dom = microdom(parser, function() {
-        assert.equal('testing', this.child(0).attr('class'));
+        equal('testing', this.child(0).attr('class'));
         t();
       });
 
@@ -1765,13 +1796,13 @@ describe('microdom', function() {
   describe('#child', function() {
     it('should return the node at specified index', function() {
       var node = microdom().append({});
-      assert.deepEqual(node.parent.child(0), node);
+      equal(node.parent.child(0), node);
     });
 
     it('should return null when passed an invalid index', function() {
       var node = microdom().append({});
-      assert.equal(node.parent.child(-1), null);
-      assert.equal(node.parent.child(10), null);
+      equal(node.parent.child(-1), null);
+      equal(node.parent.child(10), null);
     });
   });
 
@@ -1779,9 +1810,9 @@ describe('microdom', function() {
     it('should add .value if specified', function() {
       var dom = microdom();
       var node = dom.buildNode('a', { href : '/test'}, 'test link')[0];
-      assert.equal('/test', node.attr('href'));
-      assert.equal('test link', node.value);
-      assert.equal('a', node.name);
+      equal('/test', node.attr('href'));
+      equal('test link', node.value);
+      equal('a', node.name);
     });
   });
 
@@ -1791,11 +1822,11 @@ describe('microdom', function() {
       var dom = microdom().append({}).owner;
       var node = dom.prepend({ first: true });
 
-      assert.ok(dom.child(0).attr('first'));
+      ok(dom.child(0).attr('first'));
     });
 
     it('should setup the name if passed', function() {
-      assert.equal('a', microdom().prepend('a', {
+      equal('a', microdom().prepend('a', {
         test: 123
       }).name);
     });
@@ -1803,13 +1834,13 @@ describe('microdom', function() {
 
     it('should setup the owner property', function() {
       var dom = microdom();
-      assert.deepEqual(dom, dom.prepend({}).owner);
+      equal(dom, dom.prepend({}).owner);
     });
 
     it('should setup the parent attribute', function() {
       var node = microdom().append({});
 
-      assert.deepEqual(node, node.prepend({}).parent);
+      equal(node, node.prepend({}).parent);
     });
 
     it('should remove from an existing parent', function() {
@@ -1818,16 +1849,16 @@ describe('microdom', function() {
       var parent2 = dom.append({});
       var child = parent1.append({});
 
-      assert.deepEqual(child.parent, parent1);
-      assert.equal(1, parent1.length());
-      assert.equal(0, parent2.length());
+      equal(child.parent, parent1);
+      equal(1, parent1.length());
+      equal(0, parent2.length());
 
 
       parent2.prepend(child);
 
-      assert.deepEqual(child.parent, parent2);
-      assert.equal(0, parent1.length());
-      assert.equal(1, parent2.length());
+      equal(child.parent, parent2);
+      equal(0, parent1.length());
+      equal(1, parent2.length());
     });
 
     it('should update children owner properties', function() {
@@ -1840,11 +1871,11 @@ describe('microdom', function() {
 
       node.append({});
 
-      assert.ok(node.child(0).owner === dom);
+      ok(node.child(0).owner === dom);
 
       dom2.prepend(node);
 
-      assert.ok(node.child(0).owner === dom2);
+      ok(node.child(0).owner === dom2);
     });
 
     it('should be able to prepend raw xml', function() {
@@ -1853,35 +1884,35 @@ describe('microdom', function() {
 
       dom.prepend('<a /><b />');
 
-      assert.ok('a', dom.child(0).name);
-      assert.ok('b', dom.child(1).name);
-      assert.ok(dom.child(2).attr('last'));
+      ok('a', dom.child(0).name);
+      ok('b', dom.child(1).name);
+      ok(dom.child(2).attr('last'));
     });
   });
 
   describe('#append', function() {
     it('should add a child to the end of the list', function() {
-      assert.equal(1, microdom().append({
+      equal(1, microdom().append({
         some: 'attributes',
         id: 'test'
       }).owner.length());
     });
 
     it('should setup the name if passed', function() {
-      assert.equal('a', microdom().append('a', {
+      equal('a', microdom().append('a', {
         test: 123
       }).name);
     });
 
     it('should setup the owner property', function() {
       var dom = microdom();
-      assert.deepEqual(dom, dom.append({}).owner);
+      equal(dom, dom.append({}).owner);
     });
 
     it('should setup the parent attribute', function() {
       var node = microdom().append({});
 
-      assert.deepEqual(node, node.append({}).parent);
+      equal(node, node.append({}).parent);
     });
 
     it('should remove from an existing parent', function() {
@@ -1890,16 +1921,16 @@ describe('microdom', function() {
       var parent2 = dom.append({});
       var child = parent1.append({});
 
-      assert.deepEqual(child.parent, parent1);
-      assert.equal(1, parent1.length());
-      assert.equal(0, parent2.length());
+      equal(child.parent, parent1);
+      equal(1, parent1.length());
+      equal(0, parent2.length());
 
 
       parent2.append(child);
 
-      assert.deepEqual(child.parent, parent2);
-      assert.equal(0, parent1.length());
-      assert.equal(1, parent2.length());
+      equal(child.parent, parent2);
+      equal(0, parent1.length());
+      equal(1, parent2.length());
     });
 
     it('should update children owner properties', function() {
@@ -1912,11 +1943,11 @@ describe('microdom', function() {
 
       node.append({});
 
-      assert.ok(node.child(0).owner === dom);
+      ok(node.child(0).owner === dom);
 
       dom2.append(node);
 
-      assert.ok(node.child(0).owner === dom2);
+      ok(node.child(0).owner === dom2);
     });
 
     it('should be able to append raw xml', function() {
@@ -1924,9 +1955,9 @@ describe('microdom', function() {
       dom.append({ last : true });
 
       dom.append('<a /><b />');
-      assert.ok('a', dom.child(1).name);
-      assert.ok('b', dom.child(2).name);
-      assert.ok(dom.child(0).attr('last'));
+      ok('a', dom.child(1).name);
+      ok('b', dom.child(2).name);
+      ok(dom.child(0).attr('last'));
     });
 
   });
@@ -1938,11 +1969,11 @@ describe('microdom', function() {
       var b = dom.append({ name : 'b' });
       var c = dom.append({ name : 'c' });
 
-      assert.equal(1, dom.indexOf(b));
+      equal(1, dom.indexOf(b));
     });
 
     it('should return -1 when the node is not found', function() {
-      assert.equal(-1, microdom().indexOf(null));
+      equal(-1, microdom().indexOf(null));
     });
   });
 
@@ -1957,13 +1988,13 @@ describe('microdom', function() {
 
       var res = dom.remove(node);
       
-      assert.equal(0, dom.length());
-      assert.ok(res === node);
-      assert.ok(res.parent === null);
+      equal(0, dom.length());
+      ok(res === node);
+      ok(res.parent === null);
 
       // Ownership is not updated until the
       // orphan changes doms
-      assert.ok(res.owner === dom);
+      ok(res.owner === dom);
     });
 
     it('should remove a child by index', function() {
@@ -1975,13 +2006,13 @@ describe('microdom', function() {
 
       var res = dom.remove(0);
     
-      assert.equal(0, dom.length());
-      assert.ok(res === node);
-      assert.ok(res.parent === null);
+      equal(0, dom.length());
+      ok(res === node);
+      ok(res.parent === null);
 
       // Ownership is not updated until the
       // orphan changes doms
-      assert.ok(res.owner === dom);
+      ok(res.owner === dom);
     });
 
     it('should return null when provided an invalid index', function() {
@@ -1992,8 +2023,8 @@ describe('microdom', function() {
       });
 
       var res = dom.remove(-1);
-      assert.equal(1, dom.length());
-      assert.ok(res === null);
+      equal(1, dom.length());
+      ok(res === null);
     });
 
     it('should update children owner properties', function() {
@@ -2006,12 +2037,12 @@ describe('microdom', function() {
       node.append({});
 
       var res = dom.remove(0);
-      assert.equal(0, dom.length());
-      assert.ok(res === node);
+      equal(0, dom.length());
+      ok(res === node);
 
       // Ownership is not updated until the
       // orphan changes doms
-      assert.ok(res.child(0).owner === dom);
+      ok(res.child(0).owner === dom);
     });
   });
 
@@ -2023,8 +2054,8 @@ describe('microdom', function() {
 
       node.attr('hello2', 321);
 
-      assert.equal(123, node.attr('hello'));
-      assert.equal(321, node.attr('hello2'));
+      equal(123, node.attr('hello'));
+      equal(321, node.attr('hello2'));
     });
 
     it('should accept an object', function() {
@@ -2035,8 +2066,8 @@ describe('microdom', function() {
         b: 2
       });
 
-      assert.equal(1, node.attr('a'));
-      assert.equal(2, node.attr('b'));
+      equal(1, node.attr('a'));
+      equal(2, node.attr('b'));
     })
   });
 
@@ -2046,10 +2077,10 @@ describe('microdom', function() {
       var xml = '<a class="monkey" href="/test">hello</a>';
       var node = microdom.parse(xml);
 
-      assert.equal('a', node.name);
-      assert.equal('monkey', node.attr('class'));
-      assert.equal('/test', node.attr('href'));
-      assert.equal('hello', node.child(0).value);
+      equal('a', node.name);
+      equal('monkey', node.attr('class'));
+      equal('/test', node.attr('href'));
+      equal('hello', node.child(0).value);
     });
 
     it('should properly nest children', function() {
@@ -2062,9 +2093,9 @@ describe('microdom', function() {
 
       var node = microdom.parse(xml);
 
-      assert.equal(5, node.length());
-      assert.equal('/test', node.child(1).attr('href'));
-      assert.equal('/test2', node.child(3).attr('href'));
+      equal(5, node.length());
+      equal('/test', node.child(1).attr('href'));
+      equal('/test2', node.child(3).attr('href'));
     });
 
     it('should properly handle interspersed text', function() {
@@ -2075,9 +2106,9 @@ describe('microdom', function() {
       ].join('\n');
 
       var node = microdom.parse(xml);
-      assert.equal(3, node.length());
-      assert.equal('bold', node.child(1).attr('class'));
-      assert.equal('world', node.child(1).child(0).value);
+      equal(3, node.length());
+      equal('bold', node.child(1).attr('class'));
+      equal('world', node.child(1).child(0).value);
     });
 
     it('should keep the casing of tags', function() {
@@ -2085,10 +2116,10 @@ describe('microdom', function() {
 
       var array = microdom.parse(xml);
 
-      assert.equal(3, array.length);
-      assert.equal('A', array[0].name);
-      assert.equal('a', array[1].name);
-      assert.equal('aBc', array[2].name);
+      equal(3, array.length);
+      equal('A', array[0].name);
+      equal('a', array[1].name);
+      equal('aBc', array[2].name);
     });
   });
 
@@ -2115,8 +2146,8 @@ describe('microdom', function() {
       // cleanup after ourselves
       microdom.tag('a', null);
 
-      assert.ok(called);
-      assert.equal('anchor', node.type);
+      ok(called);
+      equal('anchor', node.type);
     });
   });
 
@@ -2126,14 +2157,15 @@ describe('microdom', function() {
         var dom = microdom();
         var a = dom.append('a');
 
-        dom.on('~attr.class', function(node, attributeValue, oldValue) {
-          assert.deepEqual(node, a);
-          assert.equal('biglink', oldValue);
-          assert.equal('small', attributeValue);
+        a.attr('class', 'biglink');
+
+        dom.on('~attr.class', function(node, oldValue, attributeValue) {
+          equal(node, a);
+          equal('biglink', oldValue);
+          equal('small', attributeValue);
           t();
         });
 
-        a.attr('class', 'biglink');
         a.attr('class', 'small');
       });
 
@@ -2141,9 +2173,9 @@ describe('microdom', function() {
         var dom = microdom();
         var a = dom.append('el');
 
-        dom.on('+attr.class', function(node, attributeValue, oldValue) {
-          assert.deepEqual(node, a);
-          assert.equal('biglink', attributeValue);
+        dom.on('+attr.class', function(node, oldValue, attributeValue) {
+          equal(node, a);
+          equal('biglink', attributeValue);
           t();
         });
 
@@ -2154,10 +2186,10 @@ describe('microdom', function() {
         var dom = microdom();
         var a = dom.append('el', { 'class' : 'biglink' });
 
-        dom.on('-attr.class', function(node, attributeValue, oldValue) {
-          assert.deepEqual(node, a);
-          assert.equal('biglink', oldValue);
-          assert.equal(null, attributeValue);
+        dom.on('-attr.class', function(node, oldValue, attributeValue) {
+          equal(node, a);
+          equal('biglink', oldValue);
+          equal(null, attributeValue);
           t();
         });
 
@@ -2170,8 +2202,8 @@ describe('microdom', function() {
         var dom = microdom();
 
         dom.on('+node', function(node) {
-          assert.deepEqual(node, dom.child(0));
-          assert.equal('a', node.name);
+          equal(node, dom.child(0));
+          equal('a', node.name);
           t();
         });
 
@@ -2184,8 +2216,8 @@ describe('microdom', function() {
         var dom = microdom();
 
         dom.on('+node', function(node) {
-          assert.ok(node === dom.child(0));
-          assert.equal('a', node.name);
+          ok(node === dom.child(0));
+          equal('a', node.name);
           t();
         });
 
@@ -2198,8 +2230,8 @@ describe('microdom', function() {
         var dom = microdom();
 
         dom.on('-node', function(node) {
-          assert.deepEqual(node, a);
-          assert.equal('a', node.name);
+          equal(node, a);
+          equal('a', node.name);
           t();
         });
 
@@ -2214,14 +2246,14 @@ describe('microdom', function() {
     it('should mutate MicroNode.prototype', function() {
       var node = new microdom.MicroDom();
 
-      assert.ok(!node.objectPlugin);
+      ok(!node.objectPlugin);
 
       microdom.plugin({
         objectPlugin: true
       });
 
-      assert.ok(node.objectPlugin);
-      assert.ok(microdom.MicroNode.prototype.objectPlugin);
+      ok(node.objectPlugin);
+      ok(microdom.MicroNode.prototype.objectPlugin);
     });
 
     it('should accept a function as well', function() {
@@ -2230,7 +2262,7 @@ describe('microdom', function() {
         proto.pluggedIn = true;
       });
 
-      assert.ok(microdom.MicroNode.prototype.pluggedIn);
+      ok(microdom.MicroNode.prototype.pluggedIn);
     });
 
     it('should work in the case of getElemntsByTagName', function() {
@@ -2257,358 +2289,15 @@ describe('microdom', function() {
       });
 
       var nodes = dom.getElementsByTagName('leaf');
-      assert.equal(2, nodes.length);
-      assert.equal('a', nodes[0].attr('class'));
-      assert.equal('b', nodes[1].attr('class'));
+      equal(2, nodes.length);
+      equal('a', nodes[0].attr('class'));
+      equal('b', nodes[1].attr('class'));
 
     });
   });
 });
 
-},{"../microdom.js":1,"assert":5,"sax":3,"util":22}],5:[function(require,module,exports){
-// http://wiki.commonjs.org/wiki/Unit_Testing/1.0
-//
-// THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
-//
-// Originally from narwhal.js (http://narwhaljs.org)
-// Copyright (c) 2009 Thomas Robinson <280north.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the 'Software'), to
-// deal in the Software without restriction, including without limitation the
-// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-// sell copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-// ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-// when used in node, this will actually load the util module we depend on
-// versus loading the builtin util module as happens otherwise
-// this is a bug in node module loading as far as I am concerned
-var util = require('util/');
-
-var pSlice = Array.prototype.slice;
-var hasOwn = Object.prototype.hasOwnProperty;
-
-// 1. The assert module provides functions that throw
-// AssertionError's when particular conditions are not met. The
-// assert module must conform to the following interface.
-
-var assert = module.exports = ok;
-
-// 2. The AssertionError is defined in assert.
-// new assert.AssertionError({ message: message,
-//                             actual: actual,
-//                             expected: expected })
-
-assert.AssertionError = function AssertionError(options) {
-  this.name = 'AssertionError';
-  this.actual = options.actual;
-  this.expected = options.expected;
-  this.operator = options.operator;
-  if (options.message) {
-    this.message = options.message;
-    this.generatedMessage = false;
-  } else {
-    this.message = getMessage(this);
-    this.generatedMessage = true;
-  }
-  var stackStartFunction = options.stackStartFunction || fail;
-
-  if (Error.captureStackTrace) {
-    Error.captureStackTrace(this, stackStartFunction);
-  }
-};
-
-// assert.AssertionError instanceof Error
-util.inherits(assert.AssertionError, Error);
-
-function replacer(key, value) {
-  if (util.isUndefined(value)) {
-    return '' + value;
-  }
-  if (util.isNumber(value) && (isNaN(value) || !isFinite(value))) {
-    return value.toString();
-  }
-  if (util.isFunction(value) || util.isRegExp(value)) {
-    return value.toString();
-  }
-  return value;
-}
-
-function truncate(s, n) {
-  if (util.isString(s)) {
-    return s.length < n ? s : s.slice(0, n);
-  } else {
-    return s;
-  }
-}
-
-function getMessage(self) {
-  return truncate(JSON.stringify(self.actual, replacer), 128) + ' ' +
-         self.operator + ' ' +
-         truncate(JSON.stringify(self.expected, replacer), 128);
-}
-
-// At present only the three keys mentioned above are used and
-// understood by the spec. Implementations or sub modules can pass
-// other keys to the AssertionError's constructor - they will be
-// ignored.
-
-// 3. All of the following functions must throw an AssertionError
-// when a corresponding condition is not met, with a message that
-// may be undefined if not provided.  All assertion methods provide
-// both the actual and expected values to the assertion error for
-// display purposes.
-
-function fail(actual, expected, message, operator, stackStartFunction) {
-  throw new assert.AssertionError({
-    message: message,
-    actual: actual,
-    expected: expected,
-    operator: operator,
-    stackStartFunction: stackStartFunction
-  });
-}
-
-// EXTENSION! allows for well behaved errors defined elsewhere.
-assert.fail = fail;
-
-// 4. Pure assertion tests whether a value is truthy, as determined
-// by !!guard.
-// assert.ok(guard, message_opt);
-// This statement is equivalent to assert.equal(true, !!guard,
-// message_opt);. To test strictly for the value true, use
-// assert.strictEqual(true, guard, message_opt);.
-
-function ok(value, message) {
-  if (!value) fail(value, true, message, '==', assert.ok);
-}
-assert.ok = ok;
-
-// 5. The equality assertion tests shallow, coercive equality with
-// ==.
-// assert.equal(actual, expected, message_opt);
-
-assert.equal = function equal(actual, expected, message) {
-  if (actual != expected) fail(actual, expected, message, '==', assert.equal);
-};
-
-// 6. The non-equality assertion tests for whether two objects are not equal
-// with != assert.notEqual(actual, expected, message_opt);
-
-assert.notEqual = function notEqual(actual, expected, message) {
-  if (actual == expected) {
-    fail(actual, expected, message, '!=', assert.notEqual);
-  }
-};
-
-// 7. The equivalence assertion tests a deep equality relation.
-// assert.deepEqual(actual, expected, message_opt);
-
-assert.deepEqual = function deepEqual(actual, expected, message) {
-  if (!_deepEqual(actual, expected)) {
-    fail(actual, expected, message, 'deepEqual', assert.deepEqual);
-  }
-};
-
-function _deepEqual(actual, expected) {
-  // 7.1. All identical values are equivalent, as determined by ===.
-  if (actual === expected) {
-    return true;
-
-  } else if (util.isBuffer(actual) && util.isBuffer(expected)) {
-    if (actual.length != expected.length) return false;
-
-    for (var i = 0; i < actual.length; i++) {
-      if (actual[i] !== expected[i]) return false;
-    }
-
-    return true;
-
-  // 7.2. If the expected value is a Date object, the actual value is
-  // equivalent if it is also a Date object that refers to the same time.
-  } else if (util.isDate(actual) && util.isDate(expected)) {
-    return actual.getTime() === expected.getTime();
-
-  // 7.3 If the expected value is a RegExp object, the actual value is
-  // equivalent if it is also a RegExp object with the same source and
-  // properties (`global`, `multiline`, `lastIndex`, `ignoreCase`).
-  } else if (util.isRegExp(actual) && util.isRegExp(expected)) {
-    return actual.source === expected.source &&
-           actual.global === expected.global &&
-           actual.multiline === expected.multiline &&
-           actual.lastIndex === expected.lastIndex &&
-           actual.ignoreCase === expected.ignoreCase;
-
-  // 7.4. Other pairs that do not both pass typeof value == 'object',
-  // equivalence is determined by ==.
-  } else if (!util.isObject(actual) && !util.isObject(expected)) {
-    return actual == expected;
-
-  // 7.5 For all other Object pairs, including Array objects, equivalence is
-  // determined by having the same number of owned properties (as verified
-  // with Object.prototype.hasOwnProperty.call), the same set of keys
-  // (although not necessarily the same order), equivalent values for every
-  // corresponding key, and an identical 'prototype' property. Note: this
-  // accounts for both named and indexed properties on Arrays.
-  } else {
-    return objEquiv(actual, expected);
-  }
-}
-
-function isArguments(object) {
-  return Object.prototype.toString.call(object) == '[object Arguments]';
-}
-
-function objEquiv(a, b) {
-  if (util.isNullOrUndefined(a) || util.isNullOrUndefined(b))
-    return false;
-  // an identical 'prototype' property.
-  if (a.prototype !== b.prototype) return false;
-  //~~~I've managed to break Object.keys through screwy arguments passing.
-  //   Converting to array solves the problem.
-  if (isArguments(a)) {
-    if (!isArguments(b)) {
-      return false;
-    }
-    a = pSlice.call(a);
-    b = pSlice.call(b);
-    return _deepEqual(a, b);
-  }
-  try {
-    var ka = objectKeys(a),
-        kb = objectKeys(b),
-        key, i;
-  } catch (e) {//happens when one is a string literal and the other isn't
-    return false;
-  }
-  // having the same number of owned properties (keys incorporates
-  // hasOwnProperty)
-  if (ka.length != kb.length)
-    return false;
-  //the same set of keys (although not necessarily the same order),
-  ka.sort();
-  kb.sort();
-  //~~~cheap key test
-  for (i = ka.length - 1; i >= 0; i--) {
-    if (ka[i] != kb[i])
-      return false;
-  }
-  //equivalent values for every corresponding key, and
-  //~~~possibly expensive deep test
-  for (i = ka.length - 1; i >= 0; i--) {
-    key = ka[i];
-    if (!_deepEqual(a[key], b[key])) return false;
-  }
-  return true;
-}
-
-// 8. The non-equivalence assertion tests for any deep inequality.
-// assert.notDeepEqual(actual, expected, message_opt);
-
-assert.notDeepEqual = function notDeepEqual(actual, expected, message) {
-  if (_deepEqual(actual, expected)) {
-    fail(actual, expected, message, 'notDeepEqual', assert.notDeepEqual);
-  }
-};
-
-// 9. The strict equality assertion tests strict equality, as determined by ===.
-// assert.strictEqual(actual, expected, message_opt);
-
-assert.strictEqual = function strictEqual(actual, expected, message) {
-  if (actual !== expected) {
-    fail(actual, expected, message, '===', assert.strictEqual);
-  }
-};
-
-// 10. The strict non-equality assertion tests for strict inequality, as
-// determined by !==.  assert.notStrictEqual(actual, expected, message_opt);
-
-assert.notStrictEqual = function notStrictEqual(actual, expected, message) {
-  if (actual === expected) {
-    fail(actual, expected, message, '!==', assert.notStrictEqual);
-  }
-};
-
-function expectedException(actual, expected) {
-  if (!actual || !expected) {
-    return false;
-  }
-
-  if (Object.prototype.toString.call(expected) == '[object RegExp]') {
-    return expected.test(actual);
-  } else if (actual instanceof expected) {
-    return true;
-  } else if (expected.call({}, actual) === true) {
-    return true;
-  }
-
-  return false;
-}
-
-function _throws(shouldThrow, block, expected, message) {
-  var actual;
-
-  if (util.isString(expected)) {
-    message = expected;
-    expected = null;
-  }
-
-  try {
-    block();
-  } catch (e) {
-    actual = e;
-  }
-
-  message = (expected && expected.name ? ' (' + expected.name + ').' : '.') +
-            (message ? ' ' + message : '.');
-
-  if (shouldThrow && !actual) {
-    fail(actual, expected, 'Missing expected exception' + message);
-  }
-
-  if (!shouldThrow && expectedException(actual, expected)) {
-    fail(actual, expected, 'Got unwanted exception' + message);
-  }
-
-  if ((shouldThrow && actual && expected &&
-      !expectedException(actual, expected)) || (!shouldThrow && actual)) {
-    throw actual;
-  }
-}
-
-// 11. Expected to throw an error:
-// assert.throws(block, Error_opt, message_opt);
-
-assert.throws = function(block, /*optional*/error, /*optional*/message) {
-  _throws.apply(this, [true].concat(pSlice.call(arguments)));
-};
-
-// EXTENSION! This is annoying to write outside this module.
-assert.doesNotThrow = function(block, /*optional*/message) {
-  _throws.apply(this, [false].concat(pSlice.call(arguments)));
-};
-
-assert.ifError = function(err) { if (err) {throw err;}};
-
-var objectKeys = Object.keys || function (obj) {
-  var keys = [];
-  for (var key in obj) {
-    if (hasOwn.call(obj, key)) keys.push(key);
-  }
-  return keys;
-};
-
-},{"util/":22}],6:[function(require,module,exports){
+},{"../microdom.js":1,"sax":2,"util":20}],4:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2910,7 +2599,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],7:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -2935,7 +2624,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],8:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"PcZj9L":[function(require,module,exports){
 var TA = require('typedarray')
 var xDataView = typeof DataView === 'undefined'
@@ -4780,7 +4469,7 @@ function packF32(v) { return packIEEE754(v, 8, 23); }
 },{}]},{},[])
 ;;module.exports=require("native-buffer-browserify").Buffer
 
-},{}],9:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -4834,7 +4523,7 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 
-},{}],10:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 var base64 = require('base64-js')
 var TA = require('typedarray')
 
@@ -5988,7 +5677,7 @@ function assert (test, message) {
   if (!test) throw new Error(message || 'Failed assertion')
 }
 
-},{"base64-js":11,"typedarray":12}],11:[function(require,module,exports){
+},{"base64-js":9,"typedarray":10}],9:[function(require,module,exports){
 (function (exports) {
 	'use strict';
 
@@ -6074,7 +5763,7 @@ function assert (test, message) {
 	module.exports.fromByteArray = uint8ToBase64;
 }());
 
-},{}],12:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 var undefined = (void 0); // Paranoia
 
 // Beyond this value, index getters/setters (i.e. array[0], array[1]) are so slow to
@@ -6706,7 +6395,7 @@ function packF32(v) { return packIEEE754(v, 8, 23); }
 
 }());
 
-},{}],13:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6780,7 +6469,7 @@ function onend() {
   });
 }
 
-},{"./readable.js":17,"./writable.js":19,"inherits":7,"process/browser.js":15}],14:[function(require,module,exports){
+},{"./readable.js":15,"./writable.js":17,"inherits":5,"process/browser.js":13}],12:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6909,9 +6598,9 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"./duplex.js":13,"./passthrough.js":16,"./readable.js":17,"./transform.js":18,"./writable.js":19,"events":6,"inherits":7}],15:[function(require,module,exports){
-module.exports=require(9)
-},{}],16:[function(require,module,exports){
+},{"./duplex.js":11,"./passthrough.js":14,"./readable.js":15,"./transform.js":16,"./writable.js":17,"events":4,"inherits":5}],13:[function(require,module,exports){
+module.exports=require(7)
+},{}],14:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6954,7 +6643,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./transform.js":18,"inherits":7}],17:[function(require,module,exports){
+},{"./transform.js":16,"inherits":5}],15:[function(require,module,exports){
 var process=require("__browserify_process");// Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -7889,7 +7578,7 @@ function indexOf (xs, x) {
   return -1;
 }
 
-},{"./index.js":14,"__browserify_process":9,"buffer":10,"events":6,"inherits":7,"process/browser.js":15,"string_decoder":20}],18:[function(require,module,exports){
+},{"./index.js":12,"__browserify_process":7,"buffer":8,"events":4,"inherits":5,"process/browser.js":13,"string_decoder":18}],16:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -8095,7 +7784,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./duplex.js":13,"inherits":7}],19:[function(require,module,exports){
+},{"./duplex.js":11,"inherits":5}],17:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -8483,7 +8172,7 @@ function endWritable(stream, state, cb) {
   state.ended = true;
 }
 
-},{"./index.js":14,"buffer":10,"inherits":7,"process/browser.js":15}],20:[function(require,module,exports){
+},{"./index.js":12,"buffer":8,"inherits":5,"process/browser.js":13}],18:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -8676,7 +8365,7 @@ function base64DetectIncompleteChar(buffer) {
   return incomplete;
 }
 
-},{"buffer":10}],21:[function(require,module,exports){
+},{"buffer":8}],19:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
@@ -8685,7 +8374,7 @@ module.exports = function isBuffer(arg) {
     ;
 }
 
-},{}],22:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 var process=require("__browserify_process"),global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};// Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -9266,4 +8955,4 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-},{"./support/isBuffer":21,"__browserify_process":9,"inherits":7}]},{},[4])
+},{"./support/isBuffer":19,"__browserify_process":7,"inherits":5}]},{},[3])

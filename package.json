@@ -24,7 +24,7 @@
     "cover": "istanbul cover _mocha -- test/test.js -R spec"
   },
   "dependencies": {
-    "sax": "tmpvar/sax-js"
+    "sax": "~0.6.0"
   },
   "keywords": [
     "microdom",
@@ -32,14 +32,15 @@
   ],
   "testling": {
     "browsers": [
-      "ie6",
-      "ie7",
-      "ie8",
       "ie9",
-      "firefox/15",
-      "chrome/22",
-      "opera/12",
-      "safari/5.1"
+      "ie10",
+      "firefox/25",
+      "chrome/31",
+      "opera/17",
+      "safari/5.1",
+      "iphone/6.0",
+      "ipad/6.0",
+      "android-browser/4.2"
     ],
     "harness": "mocha-bdd",
     "files": "test/test.js"
