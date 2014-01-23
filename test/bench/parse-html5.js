@@ -11,10 +11,7 @@ dom.on('+node', function(a) {
   nodes++;
 });
 
-var parser = sax.createStream();
-microdom.parse(parser, dom);
-
-fs.createReadStream(path.join(__dirname, 'html5.html')).pipe(parser).on('end', function() {
+fs.createReadStream(path.join(__dirname, 'html5.html')).pipe(microdom.createParserStream(dom)).on('end', function() {
   console.log(Date.now() - start);
   console.log('found', nodes, 'nodes');
 });

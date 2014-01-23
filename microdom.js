@@ -15,32 +15,18 @@ var isArray = Array.isArray || function(v) {
   return (v instanceof Array);
 };
 
-function parse(string, root) {
-  var parser;
-  if (!isString(string)) {
-    parser = string;
-  } else {
-    parser = sax.createStream(true);
-  }
+function parserRigging(parser, root) {
+  var loc = root;
 
-  var loc;
-  root = root || new MicroNode();
   parser.on('opentag', function(node) {
-
-    var Ctor = tags[node.name] || MicroNode;
-    var unode = new Ctor(node.attributes);
+    var unode = new (tags[node.name] || MicroNode)(node.attributes);
     unode.name = node.name;
 
-    if (!loc) {
-      loc = root;
-    }
-
-    loc.append(unode);
-    loc = unode;
+    loc = loc.append(unode);
   });
 
   parser.on('text', function(text) {
-    var node = loc.append('text', {}, text);
+    loc.append('text', {}, text);
   });
 
   parser.on('error', function(error) {
@@ -53,6 +39,20 @@ function parse(string, root) {
   parser.on('closetag', function() {
     loc = loc.parent;
   });
+}
+
+
+function parse(string, root) {
+  var parser;
+  if (!isString(string)) {
+    parser = string;
+  } else {
+    parser = sax.createStream(true);
+  }
+
+  root = root || new MicroNode();
+
+  parserRigging(parser, root);
 
   // Internal control of the parser
   if (isString(string)) {
@@ -76,6 +76,10 @@ function MicroNode(attrs) {
 inherits(MicroNode, EventEmitter);
 
 MicroNode.prototype.isNode = true;
+MicroNode.prototype._children = null;
+MicroNode.prototype.attributes = null;
+MicroNode.prototype.parent = null;
+MicroNode.prototype.owner = null;
 
 MicroNode.prototype.child = function(index) {
   return this._children[index] || null;
@@ -205,38 +209,31 @@ MicroNode.prototype.remove = function(node) {
   return node;
 };
 
-// Attribute getter/setter
 MicroNode.prototype.attr = function(name, value) {
-  var obj;
+  var a = this.attributes;
+  if (typeof value !== 'undefined') {
+    var op = '~';
+    var old = a[name] || null;
+    a[name] = value;
 
-  if (!isString(name) || (isString(name) && typeof value !== 'undefined')) {
-    if (isString(name)) {
-      obj = {};
-      obj[name] = value;
-    } else {
-      obj = name;
+    if (value === null) {
+      op = '-';
+    } else if (old === null) {
+      op = '+';
     }
 
-    for (name in obj) {
+    this.owner && this.owner.emit(op + 'attr.' + name, this, old, value);
 
-      if (obj.hasOwnProperty(name)) { 
-        value = obj[name];
-
-        var old = this.attributes[name] || null;
-        this.attributes[name] = value;
-        if (value === null) {
-          this.owner && this.owner.emit('-attr.' + name, this, value, old);
-        } else if (old !== null) {
-          this.owner && this.owner.emit('~attr.' + name, this, value, old);
-        } else {
-          this.owner && this.owner.emit('+attr.' + name, this, value, old);
-        }        
+  } else if (isArray(name) || typeof name === 'object') {
+    for (key in name) {
+      if (name.hasOwnProperty(key)) { 
+        this.attr(key, name[key]);
       }
     }
   }
 
-  return this.attributes[name] || null;
-};
+  return a[name] || null;
+}
 
 function MicroDom() {
   MicroNode.call(this);
@@ -274,6 +271,19 @@ microdom.plugin = function(o) {
       }
     }
   }
+};
+
+microdom.createParserStream = function(parent, strict, options) {
+  var parser = sax.createStream(strict);
+  var parent = parent || new MicroDom();
+  parserRigging
+  parserRigging(parser, parent);
+
+  parser.on('end', function() {
+    parser.emit('dom', parent);
+  });
+
+  return parser; 
 };
 
 microdom.parse = parse;
