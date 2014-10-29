@@ -27,7 +27,7 @@ function parserRigging(parser, root) {
   });
 
   parser.on('text', function(text) {
-    loc.append('text', {}, text);
+    loc && loc.append('text', {}, text);
   });
 
   parser.on('error', function(error) {
@@ -95,12 +95,12 @@ MicroNode.prototype.length = function() {
 };
 
 MicroNode.prototype.buildNode = function(name, obj, textContent) {
-  
+
   if (!isString(name)) {
     obj = name;
     name = null;
   } else if (
-    typeof obj === 'undefined' && 
+    typeof obj === 'undefined' &&
     typeof textContent === 'undefined' &&
     name.indexOf('<') > -1
     )
@@ -227,7 +227,7 @@ MicroNode.prototype.attr = function(name, value) {
 
   } else if (isArray(name) || typeof name === 'object') {
     for (key in name) {
-      if (name.hasOwnProperty(key)) { 
+      if (name.hasOwnProperty(key)) {
         this.attr(key, name[key]);
       }
     }
@@ -284,7 +284,7 @@ microdom.createParserStream = function(parent, strict, options) {
     parser.emit('dom', parent);
   });
 
-  return parser; 
+  return parser;
 };
 
 microdom.parse = parse;
