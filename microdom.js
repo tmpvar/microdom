@@ -294,8 +294,6 @@ microdom.sax = sax;
 
 if (typeof module !== 'undefined' && typeof module.exports == 'object') {
   module.exports = microdom;
-}
-
-if (typeof window !== 'undefined') {
+} else if (typeof window !== 'undefined') {
   window.microdom = window.microdom || microdom;
 }
